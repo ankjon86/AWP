@@ -142,7 +142,7 @@ function handleResize() {
     }
 }
 
-// Logout handler
+// Logout handler - FIXED: Use root-relative path
 function handleLogout() {
     window.showLoading();
     
@@ -152,7 +152,7 @@ function handleLogout() {
     
     setTimeout(() => {
         window.hideLoading();
-        window.location.href = 'homepage.html';
+        window.location.href = '/homepage.html';
         window.showNotification('Logged out successfully', 'success');
     }, 1000);
 }
