@@ -142,17 +142,19 @@ function handleResize() {
     }
 }
 
-// Logout handler - FIXED: Use root-relative path
+// FIXED: Logout handler - Use relative path that works from any page
 function handleLogout() {
     window.showLoading();
     
-    // Clear user session (you can add your logout logic here)
+    // Clear user session
     localStorage.removeItem('user');
     sessionStorage.clear();
     
     setTimeout(() => {
         window.hideLoading();
-        window.location.href = '/homepage.html';
+        // Navigate back to homepage using relative path from current location
+        // This will work from both root and nested module pages
+        window.location.href = '../homepage.html';
         window.showNotification('Logged out successfully', 'success');
     }, 1000);
 }
