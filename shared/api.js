@@ -1,7 +1,7 @@
 // Central API configuration for Google Apps Script backend
 const API = {
     // Base URL - Replace with your Google Apps Script URL
-    BASE_URL: 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE',
+    BASE_URL: 'https://script.google.com/macros/s/AKfycbwk6o0_nyJtiwUF1c7jQqOgjEqmaSgnoIokuFQ93gaK82r97o109Y3ydpTKyoUesvM5vA/exec',
     
     // Endpoints (these map to actions in your Apps Script)
     endpoints: {
