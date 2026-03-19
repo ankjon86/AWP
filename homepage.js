@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setupStatCards();
 });
 
+
 function initSidebar() {
     const menuToggle = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
