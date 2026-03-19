@@ -1,15 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Accounts Workspace</title>
-    <!-- Shared Layout CSS -->
-    <link rel="stylesheet" href="shared/layout.css">
-    <!-- Homepage Specific CSS -->
     <link rel="stylesheet" href="homepage.css">
-    <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
@@ -42,7 +37,7 @@
 
     <!-- Main Container -->
     <div class="main-container">
-        <!-- Side Menu Bar -->
+        <!-- Sidebar -->
         <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <img src="assets/logo.png" alt="Logo" class="logo" onerror="this.src='https://via.placeholder.com/150x50?text=Accounts+Workspace'">
@@ -50,7 +45,7 @@
             <div class="sidebar-menu">
                 <!-- Dashboard -->
                 <div class="menu-item">
-                    <a href="#" class="menu-btn" data-module="dashboard">
+                    <a href="homepage.html" class="menu-btn active" data-module="dashboard">
                         <i class="fas fa-tachometer-alt"></i>
                         <span>Dashboard</span>
                     </a>
@@ -122,7 +117,6 @@
                 </div>
             </div>
 
-            <!-- Sidebar Footer -->
             <div class="sidebar-footer">
                 <div class="version">Version 1.0.0</div>
             </div>
@@ -130,7 +124,6 @@
 
         <!-- Content Area -->
         <div class="content-area" id="contentArea">
-            <!-- Dynamic content will be loaded here -->
             <div class="welcome-section">
                 <h1>Welcome to Accounts Workspace</h1>
                 <p>Select a module from the sidebar to get started</p>
@@ -173,11 +166,7 @@
         <div class="spinner"></div>
     </div>
 
-    <!-- Shared Layout JS -->
-    <script src="shared/layout.js"></script>
-    <!-- API JS -->
     <script src="shared/api.js"></script>
-    <!-- Homepage JS -->
     <script src="homepage.js"></script>
 </body>
 </html>
