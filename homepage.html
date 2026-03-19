@@ -3,33 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Accounts Workspace - Comprehensive accounting and asset management system">
     <title>Accounts Workspace</title>
     <link rel="stylesheet" href="homepage.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <!-- Top Menu Bar -->
+    <!-- Top Navigation Bar -->
     <div class="top-bar">
         <div class="top-bar-left">
-            <button class="menu-toggle" id="menuToggle">
+            <button class="menu-toggle" id="menuToggle" aria-label="Toggle sidebar">
                 <i class="fas fa-bars"></i>
             </button>
         </div>
         <div class="top-bar-center">
-            <h2>Accounts Workspace</h2>
+            <h1>Accounts Workspace</h1>
         </div>
         <div class="top-bar-right">
             <div class="user-menu">
-                <button class="user-menu-btn" id="userMenuBtn">
+                <button class="user-menu-btn" id="userMenuBtn" aria-label="User menu" aria-haspopup="true">
                     <i class="fas fa-user-circle"></i>
-                    <span class="user-name">John Doe</span>
+                    <span class="user-name" id="userName">User</span>
                     <i class="fas fa-chevron-down"></i>
                 </button>
-                <div class="user-dropdown" id="userDropdown">
-                    <a href="#" id="profileLink"><i class="fas fa-user"></i> Profile</a>
-                    <a href="#" id="settingsLink"><i class="fas fa-cog"></i> Settings</a>
+                <div class="user-dropdown" id="userDropdown" role="menu">
+                    <a href="#" id="profileLink" role="menuitem"><i class="fas fa-user"></i> Profile</a>
+                    <a href="#" id="settingsLink" role="menuitem"><i class="fas fa-cog"></i> Settings</a>
                     <div class="dropdown-divider"></div>
-                    <a href="#" id="logoutLink"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    <a href="#" id="logoutLink" role="menuitem"><i class="fas fa-sign-out-alt"></i> Logout</a>
                 </div>
             </div>
         </div>
@@ -37,12 +38,14 @@
 
     <!-- Main Container -->
     <div class="main-container">
-        <!-- Sidebar -->
-        <div class="sidebar" id="sidebar">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar" role="navigation" aria-label="Main navigation">
             <div class="sidebar-header">
-                <img src="assets/logo.png" alt="Logo" class="logo" onerror="this.src='https://via.placeholder.com/150x50?text=Accounts+Workspace'">
+                <img src="assets/logo.png" alt="Accounts Workspace Logo" class="logo" 
+                     onerror="this.src='https://via.placeholder.com/150x50?text=Accounts+Workspace'">
             </div>
-            <div class="sidebar-menu">
+            
+            <nav class="sidebar-menu">
                 <!-- Dashboard -->
                 <div class="menu-item">
                     <a href="homepage.html" class="menu-btn active" data-module="dashboard">
@@ -59,29 +62,29 @@
                     </a>
                 </div>
 
-                <!-- Inventory Management Dropdown -->
+                <!-- Inventory Management -->
                 <div class="menu-item dropdown">
-                    <button class="menu-btn dropdown-toggle">
+                    <button class="menu-btn dropdown-toggle" aria-expanded="false">
                         <i class="fas fa-boxes"></i>
                         <span>Inventory Mgt</span>
                         <i class="fas fa-chevron-right dropdown-arrow"></i>
                     </button>
                     <div class="dropdown-content">
                         <a href="modules/inventory/addinventory.html" data-module="inventory-add">
-                            <i class="fas fa-plus-circle"></i> Add
+                            <i class="fas fa-plus-circle"></i> Add Item
                         </a>
                         <a href="modules/inventory/usedinventory.html" data-module="inventory-used">
-                            <i class="fas fa-minus-circle"></i> Used
+                            <i class="fas fa-minus-circle"></i> Record Usage
                         </a>
                         <a href="modules/inventory/viewinventoryreport.html" data-module="inventory-view">
-                            <i class="fas fa-eye"></i> View
+                            <i class="fas fa-eye"></i> View Report
                         </a>
                     </div>
                 </div>
 
-                <!-- Fixed Asset Dropdown -->
+                <!-- Fixed Assets -->
                 <div class="menu-item dropdown">
-                    <button class="menu-btn dropdown-toggle">
+                    <button class="menu-btn dropdown-toggle" aria-expanded="false">
                         <i class="fas fa-building"></i>
                         <span>Fixed Asset</span>
                         <i class="fas fa-chevron-right dropdown-arrow"></i>
@@ -99,15 +102,15 @@
                     </div>
                 </div>
 
-                <!-- Investment Management Dropdown -->
+                <!-- Investments -->
                 <div class="menu-item dropdown">
-                    <button class="menu-btn dropdown-toggle">
+                    <button class="menu-btn dropdown-toggle" aria-expanded="false">
                         <i class="fas fa-chart-line"></i>
                         <span>Investment Mgt</span>
                         <i class="fas fa-chevron-right dropdown-arrow"></i>
                     </button>
                     <div class="dropdown-content">
-                        <a href="modules/investments/addnewinvestement.html" data-module="investment-add">
+                        <a href="modules/investments/addnewinvestment.html" data-module="investment-add">
                             <i class="fas fa-plus-circle"></i> Add New
                         </a>
                         <a href="modules/investments/investmentreport.html" data-module="investment-report">
@@ -115,41 +118,42 @@
                         </a>
                     </div>
                 </div>
-            </div>
+            </nav>
 
             <div class="sidebar-footer">
-                <div class="version">Version 1.0.0</div>
+                <div class="version">v1.0.0</div>
             </div>
-        </div>
+        </aside>
 
-        <!-- Content Area -->
-        <div class="content-area" id="contentArea">
-            <div class="welcome-section">
-                <h1>Welcome to Accounts Workspace</h1>
-                <p>Select a module from the sidebar to get started</p>
+        <!-- Main Content Area -->
+        <main class="content-area" id="contentArea">
+            <section class="welcome-section">
+                <h2>Welcome to Accounts Workspace</h2>
+                <p>Manage your finances, assets, and investments in one place</p>
+                
                 <div class="quick-stats">
-                    <div class="stat-card">
+                    <div class="stat-card" data-stat="vouchers">
                         <i class="fas fa-file-invoice"></i>
                         <div class="stat-info">
                             <h3>Payment Vouchers</h3>
                             <p class="stat-value" id="statVouchers">0</p>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" data-stat="inventory">
                         <i class="fas fa-boxes"></i>
                         <div class="stat-info">
                             <h3>Inventory Items</h3>
                             <p class="stat-value" id="statInventory">0</p>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" data-stat="assets">
                         <i class="fas fa-building"></i>
                         <div class="stat-info">
                             <h3>Fixed Assets</h3>
                             <p class="stat-value" id="statAssets">0</p>
                         </div>
                     </div>
-                    <div class="stat-card">
+                    <div class="stat-card" data-stat="investments">
                         <i class="fas fa-chart-line"></i>
                         <div class="stat-info">
                             <h3>Investments</h3>
@@ -157,17 +161,18 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
+            </section>
+        </main>
     </div>
 
     <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite">
         <div class="spinner"></div>
+        <p>Loading...</p>
     </div>
 
-    <script src="shared/api.js"></script>
+    <!-- Scripts -->
+    <script src="api.js"></script>
     <script src="homepage.js"></script>
-    
 </body>
 </html>
