@@ -1,9 +1,7 @@
 // Central API configuration for Google Apps Script backend
 const API = {
-    // Base URL - Replace with your Google Apps Script URL
     BASE_URL: 'https://script.google.com/macros/s/AKfycbwk6o0_nyJtiwUF1c7jQqOgjEqmaSgnoIokuFQ93gaK82r97o109Y3ydpTKyoUesvM5vA/exec',
     
-    // Endpoints (these map to actions in your Apps Script)
     endpoints: {
         PAYMENT_VOUCHER: 'payment_voucher',
         INVENTORY_ADD: 'inventory_add',
@@ -18,20 +16,14 @@ const API = {
     }
 };
 
-// API Methods
 window.api = {
-    // Generic fetch method with error handling
     async request(action, method = 'GET', data = null) {
         try {
-            window.showLoading();
-            
             let url = `${API.BASE_URL}?action=${action}`;
             let options = {
                 method: method,
                 mode: 'cors',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
+                headers: { 'Content-Type': 'application/json' }
             };
             
             if (method === 'POST' && data) {
@@ -39,24 +31,17 @@ window.api = {
             }
             
             const response = await fetch(url, options);
-            
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
-            const result = await response.json();
-            return result;
-            
+            return await response.json();
         } catch (error) {
             console.error('API Error:', error);
-            window.showNotification('Error connecting to server', 'error');
             throw error;
-        } finally {
-            window.hideLoading();
         }
     },
     
-    // Payment Voucher methods
     async savePaymentVoucher(data) {
         return this.request(API.endpoints.PAYMENT_VOUCHER, 'POST', data);
     },
@@ -65,7 +50,6 @@ window.api = {
         return this.request(API.endpoints.PAYMENT_VOUCHER);
     },
     
-    // Inventory methods
     async addInventoryItem(data) {
         return this.request(API.endpoints.INVENTORY_ADD, 'POST', data);
     },
@@ -78,7 +62,6 @@ window.api = {
         return this.request(API.endpoints.INVENTORY_USED, 'POST', data);
     },
     
-    // Fixed Asset methods
     async addFixedAsset(data) {
         return this.request(API.endpoints.ASSET_ADD, 'POST', data);
     },
@@ -91,7 +74,6 @@ window.api = {
         return this.request(API.endpoints.ASSET_DETAILED);
     },
     
-    // Investment methods
     async addInvestment(data) {
         return this.request(API.endpoints.INVESTMENT_ADD, 'POST', data);
     },
@@ -100,9 +82,7 @@ window.api = {
         return this.request(API.endpoints.INVESTMENT_REPORT);
     },
     
-    // Dashboard stats
     async getDashboardStats() {
-        // This could combine data from multiple endpoints
         try {
             const [vouchers, inventory, assets, investments] = await Promise.all([
                 this.getPaymentVouchers().catch(() => []),
@@ -123,8 +103,3 @@ window.api = {
         }
     }
 };
-
-// Export for use in modules
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { API, api: window.api };
-}
