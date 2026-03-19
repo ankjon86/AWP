@@ -1,304 +1,188 @@
-/**
- * ACCOUNTS WORKSPACE - API CLIENT
- * Central API configuration and request handler
- * Version: 1.0.0
- */
-
-const API_CONFIG = {
-    // Google Apps Script deployment URL
-    BASE_URL: 'https://script.google.com/macros/s/AKfycbwk6o0_nyJtiwUF1c7jQqOgjEqmaSgnoIokuFQ93gaK82r97o109Y3ydpTKyoUesvM5vA/exec',
+// Central API configuration for Google Apps Script backend
+const API = {
+    // IMPORTANT: Replace this with your actual deployed URL
+    BASE_URL: 'https://script.google.com/macros/s/AKfycbwk6o0_nyJtiwUF1c7jQqOgjEqmaSgnoIokuFQ93gaK82r97o109Y3ydpTKyoUesvMv5A/exec',
     
-    // Request timeout in milliseconds
-    TIMEOUT: 30000,
-    
-    // API endpoints
-    ENDPOINTS: {
-        // Payment Voucher
-        PAYMENT_VOUCHER_CREATE: 'payment_voucher_create',
-        PAYMENT_VOUCHER_GET: 'payment_voucher_get',
-        PAYMENT_VOUCHER_GET_ALL: 'payment_voucher_get_all',
-        PAYMENT_VOUCHER_UPDATE: 'payment_voucher_update',
-        PAYMENT_VOUCHER_DELETE: 'payment_voucher_delete',
-        
-        // Inventory
+    endpoints: {
+        PAYMENT_VOUCHER: 'payment_voucher',
         INVENTORY_ADD: 'inventory_add',
         INVENTORY_USED: 'inventory_used',
         INVENTORY_VIEW: 'inventory_view',
-        INVENTORY_GET_ITEM: 'inventory_get_item',
-        INVENTORY_UPDATE: 'inventory_update',
-        INVENTORY_GET_LOW_STOCK: 'inventory_low_stock',
-        
-        // Fixed Assets
         ASSET_ADD: 'asset_add',
-        ASSET_DISPOSE: 'asset_dispose',
         ASSET_SUMMARY: 'asset_summary',
         ASSET_DETAILED: 'asset_detailed',
-        ASSET_GET_BY_ID: 'asset_get_by_id',
-        ASSET_DEPRECIATE: 'asset_depreciate',
-        
-        // Investments
         INVESTMENT_ADD: 'investment_add',
         INVESTMENT_REPORT: 'investment_report',
-        INVESTMENT_GET_ALL: 'investment_get_all',
-        INVESTMENT_GET_BY_ID: 'investment_get_by_id',
-        INVESTMENT_UPDATE_STATUS: 'investment_update_status',
-        
-        // Dashboard & Reports
         DASHBOARD_STATS: 'dashboard_stats',
-        REPORT_PAYMENT_VOUCHER: 'report_payment_voucher',
-        REPORT_INVENTORY: 'report_inventory',
-        REPORT_FIXED_ASSET: 'report_fixed_asset',
-        REPORT_INVESTMENT: 'report_investment',
-        
-        // System
-        SYSTEM_HEALTH: 'system_health',
-        SYSTEM_SETUP: 'system_setup',
-        SYSTEM_CLEAR_CACHE: 'system_clear_cache'
+        TEST: 'test' // Added test endpoint
     }
 };
 
-/**
- * API Request Handler
- * Manages all HTTP requests to Google Apps Script backend
- */
-const APIClient = {
-    /**
-     * Make a request to the API
-     * @param {string} action - API action endpoint
-     * @param {string} method - HTTP method (GET, POST)
-     * @param {Object} data - Request payload (for POST)
-     * @param {Object} params - Query parameters (for GET)
-     * @returns {Promise<Object>} API response
-     */
-    async request(action, method = 'GET', data = null, params = {}) {
+window.api = {
+    async request(action, method = 'GET', data = null) {
+        // Show loading overlay
+        this.showLoading();
+        
         try {
-            if (!action) {
-                throw new Error('Action parameter is required');
-            }
-
-            // Build URL
-            let url = `${API_CONFIG.BASE_URL}?action=${encodeURIComponent(action)}`;
+            // Add timestamp to prevent caching
+            let url = `${API.BASE_URL}?action=${action}&t=${Date.now()}`;
             
-            // Add query parameters for GET requests
-            if (method === 'GET' && Object.keys(params).length > 0) {
-                Object.entries(params).forEach(([key, value]) => {
-                    if (value !== null && value !== undefined) {
-                        url += `&${encodeURIComponent(key)}=${encodeURIComponent(value)}`;
-                    }
-                });
+            // Add query parameters for GET requests with data
+            if (method === 'GET' && data) {
+                const params = new URLSearchParams(data);
+                url += `&${params.toString()}`;
             }
-
-            // Prepare request options
-            const options = {
+            
+            let options = {
                 method: method,
                 mode: 'cors',
-                headers: {
+                headers: { 
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                }
+                },
+                redirect: 'follow'
             };
-
-            // Add request body for POST
+            
             if (method === 'POST' && data) {
                 options.body = JSON.stringify(data);
             }
-
-            // Make request with timeout
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), API_CONFIG.TIMEOUT);
-
-            const response = await fetch(url, {
-                ...options,
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            // Handle HTTP errors
+            
+            console.log(`API Request: ${method} ${action}`, data); // Debug log
+            
+            const response = await fetch(url, options);
+            
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-
-            // Parse response
-            const responseData = await response.json();
-
-            // Check for API-level errors
-            if (!responseData.success) {
-                throw new Error(responseData.error?.message || 'API request failed');
+            
+            const responseText = await response.text();
+            console.log('API Response:', responseText); // Debug log
+            
+            // Handle empty responses
+            if (!responseText || responseText.trim() === '') {
+                throw new Error('Empty response from server');
             }
-
-            return responseData.data || responseData;
-
+            
+            try {
+                return JSON.parse(responseText);
+            } catch (e) {
+                console.error('Failed to parse JSON:', responseText);
+                throw new Error('Invalid JSON response from server');
+            }
         } catch (error) {
-            console.error('API Error:', {
-                action,
-                method,
-                message: error.message,
-                stack: error.stack
-            });
+            console.error('API Error:', error);
+            this.showNotification(error.message, 'error');
+            throw error;
+        } finally {
+            this.hideLoading();
+        }
+    },
+    
+    // Test connection
+    async testConnection() {
+        try {
+            const result = await this.request(API.endpoints.TEST);
+            console.log('Connection test successful:', result);
+            this.showNotification('API connected successfully!', 'success');
+            return result;
+        } catch (error) {
+            console.error('Connection test failed:', error);
+            this.showNotification('Failed to connect to API', 'error');
             throw error;
         }
     },
-
-    /**
-     * Payment Voucher Methods
-     */
-    async createPaymentVoucher(voucherData) {
-        return this.request(API_CONFIG.ENDPOINTS.PAYMENT_VOUCHER_CREATE, 'POST', voucherData);
+    
+    // Payment Voucher methods
+    async savePaymentVoucher(data) {
+        return this.request(API.endpoints.PAYMENT_VOUCHER, 'POST', data);
     },
-
-    async getPaymentVoucher(id) {
-        return this.request(API_CONFIG.ENDPOINTS.PAYMENT_VOUCHER_GET, 'GET', null, { id });
+    
+    async getPaymentVouchers(params = {}) {
+        return this.request(API.endpoints.PAYMENT_VOUCHER, 'GET', params);
     },
-
-    async getAllPaymentVouchers(params = {}) {
-        return this.request(API_CONFIG.ENDPOINTS.PAYMENT_VOUCHER_GET_ALL, 'GET', null, params);
+    
+    // Inventory methods
+    async addInventoryItem(data) {
+        return this.request(API.endpoints.INVENTORY_ADD, 'POST', data);
     },
-
-    async updatePaymentVoucher(id, voucherData) {
-        return this.request(API_CONFIG.ENDPOINTS.PAYMENT_VOUCHER_UPDATE, 'POST', voucherData, { id });
-    },
-
-    async deletePaymentVoucher(id) {
-        return this.request(API_CONFIG.ENDPOINTS.PAYMENT_VOUCHER_DELETE, 'POST', null, { id });
-    },
-
-    /**
-     * Inventory Methods
-     */
-    async addInventoryItem(itemData) {
-        return this.request(API_CONFIG.ENDPOINTS.INVENTORY_ADD, 'POST', itemData);
-    },
-
-    async recordUsedInventory(usageData) {
-        return this.request(API_CONFIG.ENDPOINTS.INVENTORY_USED, 'POST', usageData);
-    },
-
+    
     async getInventoryItems(params = {}) {
-        return this.request(API_CONFIG.ENDPOINTS.INVENTORY_VIEW, 'GET', null, params);
+        return this.request(API.endpoints.INVENTORY_VIEW, 'GET', params);
     },
-
-    async getInventoryItem(id) {
-        return this.request(API_CONFIG.ENDPOINTS.INVENTORY_GET_ITEM, 'GET', null, { id });
+    
+    async recordUsedInventory(data) {
+        return this.request(API.endpoints.INVENTORY_USED, 'POST', data);
     },
-
-    async updateInventoryItem(id, itemData) {
-        return this.request(API_CONFIG.ENDPOINTS.INVENTORY_UPDATE, 'POST', itemData, { id });
+    
+    // Fixed Asset methods
+    async addFixedAsset(data) {
+        return this.request(API.endpoints.ASSET_ADD, 'POST', data);
     },
-
-    async getLowStockItems(threshold = 10) {
-        return this.request(API_CONFIG.ENDPOINTS.INVENTORY_GET_LOW_STOCK, 'GET', null, { threshold });
+    
+    async getAssetSummary() {
+        return this.request(API.endpoints.ASSET_SUMMARY);
     },
-
-    /**
-     * Fixed Asset Methods
-     */
-    async addFixedAsset(assetData) {
-        return this.request(API_CONFIG.ENDPOINTS.ASSET_ADD, 'POST', assetData);
+    
+    async getAssetDetailed() {
+        return this.request(API.endpoints.ASSET_DETAILED);
     },
-
-    async disposeAsset(id, disposalData) {
-        return this.request(API_CONFIG.ENDPOINTS.ASSET_DISPOSE, 'POST', disposalData, { id });
+    
+    // Investment methods
+    async addInvestment(data) {
+        return this.request(API.endpoints.INVESTMENT_ADD, 'POST', data);
     },
-
-    async getAssetSummary(params = {}) {
-        return this.request(API_CONFIG.ENDPOINTS.ASSET_SUMMARY, 'GET', null, params);
+    
+    async getInvestmentReport() {
+        return this.request(API.endpoints.INVESTMENT_REPORT);
     },
-
-    async getAssetDetailed(params = {}) {
-        return this.request(API_CONFIG.ENDPOINTS.ASSET_DETAILED, 'GET', null, params);
-    },
-
-    async getAssetById(id) {
-        return this.request(API_CONFIG.ENDPOINTS.ASSET_GET_BY_ID, 'GET', null, { id });
-    },
-
-    async depreciateAsset(id, depreciationData) {
-        return this.request(API_CONFIG.ENDPOINTS.ASSET_DEPRECIATE, 'POST', depreciationData, { id });
-    },
-
-    /**
-     * Investment Methods
-     */
-    async addInvestment(investmentData) {
-        return this.request(API_CONFIG.ENDPOINTS.INVESTMENT_ADD, 'POST', investmentData);
-    },
-
-    async getInvestmentReport(params = {}) {
-        return this.request(API_CONFIG.ENDPOINTS.INVESTMENT_REPORT, 'GET', null, params);
-    },
-
-    async getAllInvestments(params = {}) {
-        return this.request(API_CONFIG.ENDPOINTS.INVESTMENT_GET_ALL, 'GET', null, params);
-    },
-
-    async getInvestmentById(id) {
-        return this.request(API_CONFIG.ENDPOINTS.INVESTMENT_GET_BY_ID, 'GET', null, { id });
-    },
-
-    async updateInvestmentStatus(id, statusData) {
-        return this.request(API_CONFIG.ENDPOINTS.INVESTMENT_UPDATE_STATUS, 'POST', statusData, { id });
-    },
-
-    /**
-     * Dashboard Methods
-     */
+    
+    // Dashboard methods
     async getDashboardStats() {
         try {
-            const stats = await this.request(API_CONFIG.ENDPOINTS.DASHBOARD_STATS, 'GET');
-            return {
-                vouchers: stats.totalVouchers || 0,
-                inventory: stats.totalInventoryItems || 0,
-                assets: stats.totalAssets || 0,
-                investments: stats.totalInvestments || 0
-            };
+            const response = await this.request(API.endpoints.DASHBOARD_STATS);
+            
+            // Handle different response structures
+            if (response && response.success && response.data) {
+                return response.data;
+            } else if (response && response.data) {
+                return response.data;
+            } else {
+                return response;
+            }
         } catch (error) {
             console.error('Error fetching dashboard stats:', error);
-            return {
-                vouchers: 0,
-                inventory: 0,
-                assets: 0,
-                investments: 0
+            // Return default values on error
+            return { 
+                vouchers: 0, 
+                inventory: 0, 
+                assets: 0, 
+                investments: 0 
             };
         }
     },
-
-    /**
-     * Report Methods
-     */
-    async generatePaymentVoucherReport(params = {}) {
-        return this.request(API_CONFIG.ENDPOINTS.REPORT_PAYMENT_VOUCHER, 'GET', null, params);
+    
+    // Utility methods
+    showLoading() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) overlay.classList.add('show');
     },
-
-    async generateInventoryReport(params = {}) {
-        return this.request(API_CONFIG.ENDPOINTS.REPORT_INVENTORY, 'GET', null, params);
+    
+    hideLoading() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) overlay.classList.remove('show');
     },
-
-    async generateFixedAssetReport(params = {}) {
-        return this.request(API_CONFIG.ENDPOINTS.REPORT_FIXED_ASSET, 'GET', null, params);
-    },
-
-    async generateInvestmentReport(params = {}) {
-        return this.request(API_CONFIG.ENDPOINTS.REPORT_INVESTMENT, 'GET', null, params);
-    },
-
-    /**
-     * System Methods
-     */
-    async getSystemHealth() {
-        return this.request(API_CONFIG.ENDPOINTS.SYSTEM_HEALTH, 'GET');
-    },
-
-    async setupSystem() {
-        return this.request(API_CONFIG.ENDPOINTS.SYSTEM_SETUP, 'POST');
-    },
-
-    async clearCache() {
-        return this.request(API_CONFIG.ENDPOINTS.SYSTEM_CLEAR_CACHE, 'POST');
+    
+    showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.textContent = message;
+        notification.setAttribute('role', 'alert');
+        document.body.appendChild(notification);
+        setTimeout(() => notification.remove(), 3000);
     }
 };
 
-// Export for use in other scripts
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { APIClient, API_CONFIG };
-}
+// Auto-test connection on page load (optional)
+document.addEventListener('DOMContentLoaded', function() {
+    // Uncomment to test connection automatically
+    // setTimeout(() => window.api.testConnection(), 1000);
+});
