@@ -1,8 +1,66 @@
+/* ============================================
+   ACCOUNTS WORKSPACE - MAIN JAVASCRIPT
+   ============================================ */
+
 // Global Variables
 let currentUser = null;
 let currentOpenSubmenu = null;
 let sidebarCollapsed = false;
 let currentModule = 'dashboard';
+
+// ============================================
+// COMPATIBILITY LAYER - For modules still using callGAS
+// ============================================
+
+function callGAS(action, data = {}) {
+    console.warn('callGAS is deprecated. Use API.[method] instead. Action:', action);
+    
+    // Map actions to API methods
+    const actionMap = {
+        // User
+        'getUserInfo': () => API.getUserInfo(),
+        
+        // Payment Voucher
+        'processForm': () => API.processForm(data.formData ? JSON.parse(data.formData) : data),
+        'getNextPVNumber': () => API.getNextPVNumber(data.voucherType),
+        'getPVNumbersByType': () => API.getPVNumbersByType(),
+        'getVoucherByNumber': () => API.getVoucherByNumber(data.pvNumber, data.voucherType),
+        'updateVoucher': () => API.updateVoucher(data.formData ? JSON.parse(data.formData) : data),
+        
+        // Inventory
+        'generateInventoryCategoryCode': () => API.generateInventoryCategoryCode(),
+        'getInventoryCategories': () => API.getInventoryCategories(),
+        'addNewInventory': () => API.addNewInventory(data.formData ? JSON.parse(data.formData) : data),
+        'getPurchaseReportData': () => API.getPurchaseReportData(data.fromDate, data.toDate),
+        'getUsageReportData': () => API.getUsageReportData(data.fromDate, data.toDate),
+        'getInventoryListData': () => API.getInventoryListData(),
+        'recordInventoryUsage': () => API.recordInventoryUsage(data.formData ? JSON.parse(data.formData) : data),
+        'removeInventory': () => API.removeInventory(data.inventoryCode),
+        
+        // Fixed Assets
+        'generateAssetCode': () => API.generateAssetCode(data.assetType),
+        'addNewAsset': () => API.addNewAsset(data.formData ? JSON.parse(data.formData) : data),
+        'getDetailedRegister': () => API.getDetailedRegister(),
+        'updateAssetStatus': () => API.updateAssetStatus(data.assetName, data.newStatus),
+        
+        // Investment
+        'generateInvestmentCode': () => API.generateInvestmentCode(data.investmentType),
+        'addNewInvestment': () => API.addNewInvestment(data.formData ? JSON.parse(data.formData) : data),
+        'getInvestmentsByDateRange': () => API.getInvestmentsByDateRange(data.fromDate, data.toDate),
+        'getMaturedInvestments': () => API.getMaturedInvestments(data.toDate)
+    };
+    
+    const apiCall = actionMap[action];
+    if (apiCall) {
+        return apiCall();
+    }
+    
+    console.error('Unknown action:', action);
+    return Promise.reject(new Error(`Unknown action: ${action}`));
+}
+
+// Make callGAS available globally for backward compatibility
+window.callGAS = callGAS;
 
 // ============================================
 // INITIALIZATION
