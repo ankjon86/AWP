@@ -1,3 +1,6 @@
+/* ============================================
+   PAYMENT VOUCHER MODULE JAVASCRIPT
+   ============================================ */
 
 // Global variables for PV module
 let lastSubmittedVoucherData = null;
@@ -9,6 +12,7 @@ let nextPvNumber = null;
 // ============================================
 
 function initPVModule() {
+    console.log('PV Module initializing...');
     const today = new Date().toISOString().split('T')[0];
     const dateField = document.getElementById('date');
     if (dateField) dateField.value = today;
@@ -80,7 +84,12 @@ function toggleWithholdingTax() {
 // ============================================
 
 function fetchNextPVNumber(voucherType) {
-    callGAS('getNextPVNumber', { voucherType: voucherType })
+    if (!window.API) {
+        console.error('API not available');
+        return;
+    }
+    
+    API.getNextPVNumber(voucherType)
         .then(response => {
             if (response && !response.error) {
                 nextPvNumber = response;
@@ -96,11 +105,17 @@ function fetchNextPVNumber(voucherType) {
         })
         .catch(error => {
             console.error('Error fetching next PV number:', error);
+            showError('Failed to get PV number: ' + error.message);
         });
 }
 
 function fetchPVTable() {
-    callGAS('getPVNumbersByType', {})
+    if (!window.API) {
+        console.error('API not available');
+        return;
+    }
+    
+    API.getPVNumbersByType()
         .then(response => {
             if (response && !response.error) {
                 renderPVList('cash-payment-list', response['Cash Payment Voucher']);
@@ -189,7 +204,7 @@ function viewVoucher(pvNumber, voucherType) {
     closeDropdownPortal();
     showLoading('Loading voucher...');
     
-    callGAS('getVoucherByNumber', { pvNumber: pvNumber, voucherType: voucherType })
+    API.getVoucherByNumber(pvNumber, voucherType)
         .then(response => {
             hideLoading();
             if (response && !response.error && response.pvNumber) {
@@ -213,7 +228,7 @@ function editVoucher(pvNumber, voucherType) {
     const pvDisplay = document.getElementById('pvNumberDisplay');
     if (pvDisplay) pvDisplay.textContent = pvNumber;
     
-    callGAS('getVoucherByNumber', { pvNumber: pvNumber, voucherType: voucherType })
+    API.getVoucherByNumber(pvNumber, voucherType)
         .then(response => {
             hideLoading();
             if (response && !response.error && response.pvNumber) {
@@ -309,7 +324,7 @@ function submitForm() {
     formObject.amountInWords = convertNumberToWords(formObject.amount);
     lastSubmittedVoucherData = formObject;
     
-    callGAS('processForm', { formData: JSON.stringify(formObject) })
+    API.processForm(formObject)
         .then(response => {
             hideLoading();
             if (response && !response.error) {
@@ -357,7 +372,7 @@ function updateForm() {
     formObject.amountInWords = convertNumberToWords(formObject.amount);
     lastSubmittedVoucherData = formObject;
     
-    callGAS('updateVoucher', { formData: JSON.stringify(formObject) })
+    API.updateVoucher(formObject)
         .then(response => {
             hideLoading();
             if (response && !response.error) {
