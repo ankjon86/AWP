@@ -3,7 +3,6 @@ let currentUser = null;
 let currentOpenSubmenu = null;
 let sidebarCollapsed = false;
 let currentModule = 'dashboard';
-let apiBaseUrl = '';
 
 // ============================================
 // INITIALIZATION
@@ -93,7 +92,7 @@ function loadUserInfo() {
         userNameEl.textContent = 'Loading...';
     }
     
-    callGAS('getUserInfo', {})
+    API.getUserInfo()
         .then(response => {
             if (response && response.success !== false) {
                 currentUser = response;
@@ -374,54 +373,6 @@ function updateActiveMenuItem(moduleName) {
 }
 
 // ============================================
-// API CALLS
-// ============================================
-
-async function callGAS(action, data = {}) {
-    const apiUrl = window.APP_CONFIG ? window.APP_CONFIG.API_URL : '';
-    
-    if (!apiUrl) {
-        console.warn('API URL not configured');
-        return { error: 'API not configured' };
-    }
-    
-    try {
-        const formData = new URLSearchParams();
-        formData.append('action', action);
-        
-        for (const [key, value] of Object.entries(data)) {
-            if (value !== undefined && value !== null) {
-                if (typeof value === 'object') {
-                    formData.append(key, JSON.stringify(value));
-                } else {
-                    formData.append(key, String(value));
-                }
-            }
-        }
-        
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: formData.toString()
-        });
-        
-        const text = await response.text();
-        
-        try {
-            return JSON.parse(text);
-        } catch (e) {
-            return { raw: text, error: e.message };
-        }
-        
-    } catch (error) {
-        console.error('API call error:', error);
-        return { error: error.message };
-    }
-}
-
-// ============================================
 // UTILITY FUNCTIONS
 // ============================================
 
@@ -495,7 +446,12 @@ function generateId(prefix = 'id') {
 
 function initDashboard() {
     console.log('Dashboard initialized');
-    // Add dashboard-specific initialization here
+    // Update welcome message with user name if available
+    const welcomeMsg = document.getElementById('dashboardWelcomeMessage');
+    if (welcomeMsg && currentUser) {
+        const userName = currentUser.name || currentUser.email || 'User';
+        welcomeMsg.innerHTML = `Welcome back, <strong>${userName}</strong>! Select a module from the sidebar to begin managing your accounts.`;
+    }
 }
 
 // ============================================
@@ -573,7 +529,6 @@ window.hideLoading = hideLoading;
 window.showToast = showToast;
 window.showError = showError;
 window.showSuccess = showSuccess;
-window.callGAS = callGAS;
 window.formatCurrency = formatCurrency;
 window.formatDate = formatDate;
 window.formatDateForInput = formatDateForInput;
@@ -584,6 +539,9 @@ window.capitalize = capitalize;
 window.showProfile = showProfile;
 window.showSettings = showSettings;
 window.logout = logout;
+
+// Make API available globally for modules
+window.API = API;
 
 // Module initializers
 window.initDashboard = initDashboard;
