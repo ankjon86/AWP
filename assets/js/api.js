@@ -1,17 +1,16 @@
-/* ============================================
-   ACCOUNTS WORKSPACE - API MODULE
-   All API calls to Google Apps Script backend
-   ============================================ */
-
 const API = (function() {
     // Private variables
     let apiUrl = '';
+    let isInitialized = false;
     
     // Initialize with config
     function init() {
-        apiUrl = window.APP_CONFIG ? window.APP_CONFIG.API_URL : '';
-        if (!apiUrl || apiUrl.includes('YOUR_DEPLOYMENT_ID')) {
-            console.warn('API not configured. Please update config.js with your Google Apps Script URL.');
+        if (window.APP_CONFIG && window.APP_CONFIG.API_URL) {
+            apiUrl = window.APP_CONFIG.API_URL;
+            isInitialized = true;
+            console.log('API initialized with URL:', apiUrl);
+        } else {
+            console.error('API not configured. Please update config.js with your Google Apps Script URL.');
         }
     }
     
@@ -22,6 +21,8 @@ const API = (function() {
                 reject(new Error('API not configured. Please check config.js'));
                 return;
             }
+            
+            console.log(`API Call: ${action}`, data);
             
             // Generate a unique callback name
             const callbackName = 'api_callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
@@ -42,11 +43,14 @@ const API = (function() {
                 }
             }
             
+            const fullUrl = apiUrl + '?' + params.toString();
+            console.log('Request URL:', fullUrl.substring(0, 200) + '...');
+            
             // Set timeout (30 seconds)
             const timeoutId = setTimeout(() => {
                 if (window[callbackName]) {
                     delete window[callbackName];
-                    reject(new Error('Request timeout'));
+                    reject(new Error('Request timeout after 30 seconds'));
                 }
             }, 30000);
             
@@ -60,6 +64,8 @@ const API = (function() {
                     script.parentNode.removeChild(script);
                 }
                 
+                console.log(`API Response for ${action}:`, response);
+                
                 if (response && response.error) {
                     reject(new Error(response.error));
                 } else {
@@ -69,12 +75,12 @@ const API = (function() {
             
             // Create and add the script tag
             const script = document.createElement('script');
-            script.src = apiUrl + '?' + params.toString();
+            script.src = fullUrl;
             script.onerror = function() {
                 clearTimeout(timeoutId);
                 delete window[callbackName];
                 if (script.parentNode) script.parentNode.removeChild(script);
-                reject(new Error('Network error - failed to load script'));
+                reject(new Error('Network error - failed to load script. Check your internet connection and API URL.'));
             };
             
             document.head.appendChild(script);
@@ -229,6 +235,9 @@ const API = (function() {
     // PUBLIC API
     // ============================================
     
+    // Auto-initialize
+    init();
+    
     return {
         init,
         
@@ -276,7 +285,5 @@ const API = (function() {
     };
 })();
 
-// Initialize API when script loads
-if (window.APP_CONFIG) {
-    API.init();
-}
+// Make API available globally
+window.API = API;
