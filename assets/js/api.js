@@ -1,3 +1,8 @@
+/* ============================================
+   ACCOUNTS WORKSPACE - API MODULE
+   All API calls to Google Apps Script backend
+   ============================================ */
+
 const API = (function() {
     // Private variables
     let apiUrl = '';
