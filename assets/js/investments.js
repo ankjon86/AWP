@@ -1,3 +1,7 @@
+/* ============================================
+   INVESTMENT MODULE JAVASCRIPT
+   ============================================ */
+
 // Global variables
 let allInvestments = [];
 let currentReportTab = 'purchaseReport';
@@ -848,4 +852,420 @@ function renderInterestReport(data, fromDate, toDate) {
   });
 
   if (activeInvestments.length === 0) {
-    container.innerHTML = '<p style="text-align: center;
+    container.innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">No active investments found</p>';
+    return;
+  }
+
+  const grouped = {};
+  activeInvestments.forEach(item => {
+    if (!grouped[item.investmentType]) {
+      grouped[item.investmentType] = [];
+    }
+    grouped[item.investmentType].push(item);
+  });
+
+  let html = '';
+  Object.keys(grouped).forEach(type => {
+    const items = grouped[type];
+    let subtotalAmount = 0;
+    let subtotalAccruedMonthly = 0;
+    let subtotalAccruedToDate = 0;
+    let subtotalCurrentValue = 0;
+
+    items.forEach(row => {
+      const amount = parseFloat(row.amount) || 0;
+      const rate = parseFloat(row.interestRate) || 0;
+      const investDate = new Date(row.investmentDate);
+      const maturityDate = new Date(row.maturityDate);
+      const interestAmount = parseFloat(row.interestAmount) || 0;
+
+      const daysInRange = calculateDaysInRange(investDate, maturityDate, fromDateObj, toDateObj);
+      const dailyRate = (amount * (rate / 100)) / 365;
+      const accruedMonthly = dailyRate * daysInRange;
+
+      const effectiveToDate = toDateObj < maturityDate ? toDateObj : maturityDate;
+      const daysToDate = calculateDaysInRange(investDate, effectiveToDate);
+      const accruedToDate = dailyRate * daysToDate;
+      const currentValue = amount + accruedToDate;
+
+      subtotalAmount += amount;
+      subtotalAccruedMonthly += accruedMonthly;
+      subtotalAccruedToDate += accruedToDate;
+      subtotalCurrentValue += currentValue;
+    });
+
+    html += `
+      <div class="grouped-report">
+        <div class="group-title">${escapeHtml(type)}</div>
+        <div class="group-table-wrapper">
+          <table class="group-table">
+            <thead>
+              <tr>
+                <th>Investment Code</th>
+                <th>Bank Name</th>
+                <th>Amount (GHc)</th>
+                <th>Interest Rate (%)</th>
+                <th>Duration (Days)</th>
+                <th>Investment Date</th>
+                <th>Maturity Date</th>
+                <th>Interest Amount</th>
+                <th>Accrued Monthly Interest</th>
+                <th>Accrued Interest To Date</th>
+                <th>Current Value</th>
+               </tr>
+            </thead>
+            <tbody>
+              ${items.map(row => {
+                const amount = parseFloat(row.amount) || 0;
+                const rate = parseFloat(row.interestRate) || 0;
+                const investDate = new Date(row.investmentDate);
+                const maturityDate = new Date(row.maturityDate);
+                const interestAmount = parseFloat(row.interestAmount) || 0;
+
+                const daysInRange = calculateDaysInRange(investDate, maturityDate, fromDateObj, toDateObj);
+                const dailyRate = (amount * (rate / 100)) / 365;
+                const accruedMonthly = dailyRate * daysInRange;
+
+                const effectiveToDate = toDateObj < maturityDate ? toDateObj : maturityDate;
+                const daysToDate = calculateDaysInRange(investDate, effectiveToDate);
+                const accruedToDate = dailyRate * daysToDate;
+                const currentValue = amount + accruedToDate;
+
+                return `
+                  <tr>
+                    <td>${escapeHtml(row.investmentCode || '')}</td>
+                    <td>${escapeHtml(row.bankName || '')}</td>
+                    <td>${formatCurrency(amount)}</td>
+                    <td>${rate ? rate.toFixed(2) + '%' : '0.00%'}</td>
+                    <td>${row.duration || 0}</td>
+                    <td>${row.investmentDate || ''}</td>
+                    <td>${row.maturityDate || ''}</td>
+                    <td>${formatCurrency(interestAmount)}</td>
+                    <td>${formatCurrency(accruedMonthly)}</td>
+                    <td>${formatCurrency(accruedToDate)}</td>
+                    <td>${formatCurrency(currentValue)}</td>
+                  </tr>
+                `;
+              }).join('')}
+              <tr class="subtotal-row">
+                <td colspan="2" style="text-align: right;">${escapeHtml(type)} Subtotal:</td>
+                <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
+                <td></td><td></td><td></td><td></td><td></td>
+                <td class="subtotal-cell">${formatCurrency(subtotalAccruedMonthly)}</td>
+                <td class="subtotal-cell">${formatCurrency(subtotalAccruedToDate)}</td>
+                <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function loadMaturedInvestments() {
+  const today = new Date().toISOString().split('T')[0];
+  showInvestmentLoadingSpinner('maturedReportBody', 10);
+
+  callGAS('getMaturedInvestments', { toDate: today })
+    .then(response => {
+      if (response && !response.error && response.length > 0) {
+        renderMaturedInvestmentsTable(response);
+      } else {
+        showInvestmentEmptyState('maturedReportBody', 'No matured investments found', 10);
+      }
+    })
+    .catch(error => {
+      console.error('Error loading matured investments:', error);
+      showInvestmentEmptyState('maturedReportBody', 'Error loading matured investments', 10);
+    });
+}
+
+function renderMaturedInvestmentsTable(data) {
+  const tbody = document.getElementById('maturedReportBody');
+  if (!tbody) return;
+
+  allInvestments = data;
+
+  tbody.innerHTML = data.map(row => `
+    <tr>
+      <td>${escapeHtml(row.investmentCode || '')}</td>
+      <td>${escapeHtml(row.bankName || '')}</td>
+      <td>${escapeHtml(row.investmentType || '')}</td>
+      <td>${formatCurrency(row.amount)}</td>
+      <td>${row.interestRate ? row.interestRate.toFixed(2) + '%' : '0.00%'}</td>
+      <td>${row.duration || 0}</td>
+      <td>${row.investmentDate || ''}</td>
+      <td>${row.maturityDate || ''}</td>
+      <td>${formatCurrency(row.maturityAmount)}</td>
+      <td>
+        <button class="action-btn" onclick="openMaturedDropdown(event, '${escapeHtml(row.investmentCode)}')">
+          <i class="fas fa-ellipsis-v"></i> Action
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openMaturedDropdown(event, investmentCode) {
+  closeInvestmentActionDropdown();
+
+  const rect = event.target.closest('button').getBoundingClientRect();
+  const portal = document.getElementById('investmentActionPortal');
+
+  portal.innerHTML = `
+    <div class="action-dropdown-content">
+      <button class="dropdown-item" onclick="openRolloverModal('${investmentCode}')">
+        <i class="fas fa-redo"></i> Rollover
+      </button>
+      <button class="dropdown-item" onclick="removeMaturedInvestment('${investmentCode}')">
+        <i class="fas fa-trash-alt"></i> Remove
+      </button>
+    </div>
+  `;
+
+  portal.style.display = 'block';
+  portal.style.position = 'fixed';
+  portal.style.top = (rect.bottom + window.scrollY) + 'px';
+  portal.style.left = (rect.left + window.scrollX) + 'px';
+
+  event.stopPropagation();
+}
+
+function closeInvestmentActionDropdown() {
+  const portal = document.getElementById('investmentActionPortal');
+  if (portal) {
+    portal.innerHTML = '';
+    portal.style.display = 'none';
+  }
+}
+
+function openRolloverModal(investmentCode) {
+  closeInvestmentActionDropdown();
+  
+  const investment = allInvestments.find(inv => inv.investmentCode === investmentCode);
+  if (!investment) {
+    showInvestmentMessage('Investment not found', 'error');
+    return;
+  }
+
+  investmentToRollover = investment;
+
+  document.getElementById('rolloverInvestmentType').value = investment.investmentType;
+  document.getElementById('rolloverBankName').value = investment.bankName;
+  document.getElementById('rolloverAmount').value = investment.maturityAmount;
+  document.getElementById('rolloverInterestRate').value = investment.interestRate;
+  document.getElementById('rolloverDuration').value = investment.duration;
+
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('rolloverInvestmentDate').value = today;
+
+  generateRolloverInvestmentCode(investment.investmentType);
+  calculateRolloverMaturityDate();
+
+  document.getElementById('rolloverModal').style.display = 'flex';
+}
+
+function closeRolloverModal() {
+  document.getElementById('rolloverModal').style.display = 'none';
+  investmentToRollover = null;
+}
+
+function generateRolloverInvestmentCode(investmentType) {
+  callGAS('generateInvestmentCode', { investmentType: investmentType })
+    .then(response => {
+      document.getElementById('rolloverInvestmentCode').value = response || '';
+    })
+    .catch(error => {
+      console.error('Error generating code:', error);
+    });
+}
+
+function handleRolloverInvestmentTypeChange() {
+  const investmentType = document.getElementById('rolloverInvestmentType').value;
+  if (investmentType) {
+    generateRolloverInvestmentCode(investmentType);
+  }
+}
+
+function calculateRolloverMaturityDate() {
+  const investmentDate = document.getElementById('rolloverInvestmentDate').value;
+  const duration = parseInt(document.getElementById('rolloverDuration').value) || 0;
+
+  if (!investmentDate || duration <= 0) {
+    document.getElementById('rolloverMaturityDate').value = '';
+    return;
+  }
+
+  const startDate = new Date(investmentDate);
+  const maturityDate = new Date(startDate.getTime() + (duration * 24 * 60 * 60 * 1000));
+
+  const year = maturityDate.getFullYear();
+  const month = String(maturityDate.getMonth() + 1).padStart(2, '0');
+  const day = String(maturityDate.getDate()).padStart(2, '0');
+
+  document.getElementById('rolloverMaturityDate').value = `${year}-${month}-${day}`;
+  calculateRolloverMaturityAmount();
+}
+
+function calculateRolloverMaturityAmount() {
+  const amount = parseFloat(document.getElementById('rolloverAmount').value) || 0;
+  const interestRate = parseFloat(document.getElementById('rolloverInterestRate').value) || 0;
+  const duration = parseInt(document.getElementById('rolloverDuration').value) || 0;
+
+  if (amount <= 0 || interestRate < 0 || duration <= 0) {
+    document.getElementById('rolloverInterestAmount').value = '0.00';
+    document.getElementById('rolloverMaturityAmount').value = '0.00';
+    return;
+  }
+
+  const timeInYears = duration / 365;
+  const interestAmount = (amount * interestRate * timeInYears) / 100;
+  const maturityAmount = amount + interestAmount;
+
+  document.getElementById('rolloverInterestAmount').value = formatCurrency(interestAmount);
+  document.getElementById('rolloverMaturityAmount').value = formatCurrency(maturityAmount);
+}
+
+function submitRolloverInvestment() {
+  showInvestmentMessage('Rollover investment submitted successfully!', 'success');
+  closeRolloverModal();
+  loadMaturedInvestments();
+}
+
+function removeMaturedInvestment(investmentCode) {
+  closeInvestmentActionDropdown();
+  
+  if (confirm(`Are you sure you want to remove investment ${investmentCode}?`)) {
+    showInvestmentMessage('Investment removed successfully!', 'success');
+    loadMaturedInvestments();
+  }
+}
+
+function calculateDaysInRange(startDate, endDate, fromDate = null, toDate = null) {
+  let effectiveStart = startDate;
+  let effectiveEnd = endDate;
+  
+  if (fromDate && fromDate > effectiveStart) {
+    effectiveStart = fromDate;
+  }
+  if (toDate && toDate < effectiveEnd) {
+    effectiveEnd = toDate;
+  }
+  
+  if (effectiveStart >= effectiveEnd) return 0;
+  
+  const timeDiff = effectiveEnd.getTime() - effectiveStart.getTime();
+  return Math.ceil(timeDiff / (1000 * 3600 * 24));
+}
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+function showInvestmentMessage(message, type) {
+  const modal = document.getElementById('messageModal');
+  const messageDiv = document.getElementById('modalMessage');
+
+  const types = {
+    success: 'success-message',
+    error: 'error-message',
+    info: 'info-message'
+  };
+
+  messageDiv.innerHTML = `<div class="${types[type] || types.info}">${message}</div>`;
+  modal.style.display = 'flex';
+}
+
+function closeInvestmentModal() {
+  const modal = document.getElementById('messageModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function showInvestmentLoadingModal(message = 'Processing...') {
+  let modal = document.getElementById('investmentLoadingModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'investmentLoadingModal';
+    modal.className = 'investment-loading-modal';
+    document.body.appendChild(modal);
+  }
+  
+  modal.innerHTML = `
+    <div class="loading-modal-content">
+      <div class="loading-spinner"></div>
+      <p>${message}</p>
+    </div>
+  `;
+  modal.style.display = 'flex';
+}
+
+function hideInvestmentLoadingModal() {
+  const modal = document.getElementById('investmentLoadingModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function showInvestmentEmptyState(elementId, message, colSpan) {
+  const element = document.getElementById(elementId);
+  if (element && element.tagName === 'TBODY') {
+    element.innerHTML = `
+      <tr>
+        <td colspan="${colSpan}" class="loading-cell">
+          <i class="fas fa-folder-open"></i>
+          <p>${message}</p>
+        </td>
+      </tr>
+    `;
+  } else {
+    const container = document.getElementById(elementId);
+    if (container) {
+      container.innerHTML = `<p style="text-align: center; color: #a0aec0; padding: 30px;">${message}</p>`;
+    }
+  }
+}
+
+function showInvestmentLoadingSpinner(elementId, colSpan) {
+  const element = document.getElementById(elementId);
+  if (element && element.tagName === 'TBODY') {
+    element.innerHTML = `<tr><td colspan="${colSpan}" class="loading-cell">Loading...</td></tr>`;
+  } else {
+    const container = document.getElementById(elementId);
+    if (container) {
+      container.innerHTML = `<p style="text-align: center; color: #a0aec0; padding: 30px;">Loading...</p>`;
+    }
+  }
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Export for global use
+window.initInvestmentModule = initInvestmentModule;
+window.initInvestmentReportModule = initInvestmentReportModule;
+window.handleInvestmentTypeChange = handleInvestmentTypeChange;
+window.calculateMaturityDate = calculateMaturityDate;
+window.calculateMaturityAmount = calculateMaturityAmount;
+window.submitNewInvestment = submitNewInvestment;
+window.switchInvestmentReportTab = switchInvestmentReportTab;
+window.handleReportTypeChange = handleReportTypeChange;
+window.loadPurchaseReport = loadPurchaseReport;
+window.loadFullInvestmentReport = loadFullInvestmentReport;
+window.loadInterestReport = loadInterestReport;
+window.openMaturedDropdown = openMaturedDropdown;
+window.openRolloverModal = openRolloverModal;
+window.closeRolloverModal = closeRolloverModal;
+window.handleRolloverInvestmentTypeChange = handleRolloverInvestmentTypeChange;
+window.calculateRolloverMaturityDate = calculateRolloverMaturityDate;
+window.calculateRolloverMaturityAmount = calculateRolloverMaturityAmount;
+window.submitRolloverInvestment = submitRolloverInvestment;
+window.removeMaturedInvestment = removeMaturedInvestment;
+window.closeInvestmentModal = closeInvestmentModal;
