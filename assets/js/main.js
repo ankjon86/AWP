@@ -1,7 +1,3 @@
-/* ============================================
-   ACCOUNTS WORKSPACE - MAIN JAVASCRIPT
-   ============================================ */
-
 // Global Variables
 let currentUser = null;
 let currentOpenSubmenu = null;
