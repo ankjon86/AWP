@@ -1,7 +1,7 @@
 // CONFIGURATION
 const APP_CONFIG = {
     // Google Apps Script Web App URL
-    API_URL: 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec',
+    API_URL: 'https://script.google.com/macros/s/AKfycbwhrAckDK-eLguLKM5WcV9HtUuE6D8I-Q2g-lckarcpSPfigqKsKAfVqIRMU1ppcBCkIQ/exec',
     
     // Google Sheet IDs
     SHEETS: {
