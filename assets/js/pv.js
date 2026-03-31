@@ -86,21 +86,40 @@ function toggleWithholdingTax() {
 function fetchNextPVNumber(voucherType) {
     if (!window.API) {
         console.error('API not available');
+        showError('API service not initialized. Please refresh the page.');
         return;
     }
     
+    console.log('Fetching next PV number for type:', voucherType);
+    
     API.getNextPVNumber(voucherType)
         .then(response => {
-            if (response && !response.error) {
-                nextPvNumber = response;
+            console.log('PV Number response:', response);
+            // Handle different response formats
+            let pvNumber = null;
+            if (typeof response === 'string') {
+                pvNumber = response;
+            } else if (response && response.pvNumber) {
+                pvNumber = response.pvNumber;
+            } else if (response && typeof response === 'object' && !response.error) {
+                // Try to get the first value from the response
+                pvNumber = Object.values(response)[0] || response;
+            }
+            
+            if (pvNumber) {
+                nextPvNumber = pvNumber;
                 if (!currentlyEditingPvNumber) {
                     const pvField = document.getElementById('pvNumber');
                     const pvDisplay = document.getElementById('pvNumberDisplay');
-                    if (pvField) pvField.value = response;
-                    if (pvDisplay) pvDisplay.textContent = response;
+                    if (pvField) pvField.value = pvNumber;
+                    if (pvDisplay) pvDisplay.textContent = pvNumber;
                 }
+            } else if (response && response.error) {
+                console.error('Error fetching PV number:', response.error);
+                showError('Failed to get PV number: ' + response.error);
             } else {
-                console.error('Error fetching PV number:', response);
+                console.error('Unexpected response format:', response);
+                showError('Failed to get PV number. Please try again.');
             }
         })
         .catch(error => {
@@ -144,8 +163,13 @@ function renderPVList(elementId, pvList) {
     }
     
     const items = pvList.slice(-5).reverse().map(item => {
-        const match = item.pvNumber.match(/(PVNO\.[A-Z]{2})(\d+)/);
-        let formattedPV = item.pvNumber;
+        let pvNumber = item.pvNumber || item;
+        if (typeof item === 'object') {
+            pvNumber = item.pvNumber;
+        }
+        
+        const match = String(pvNumber).match(/(PVNO\.[A-Z]{2})(\d+)/);
+        let formattedPV = pvNumber;
         
         if (match) {
             const prefix = match[1];
@@ -153,7 +177,9 @@ function renderPVList(elementId, pvList) {
             formattedPV = prefix + num;
         }
         
-        return `<button class="pv-btn" onclick="openDropdownPortal(event, this, '${formattedPV}', '${item.voucherType}')">${formattedPV}</button>`;
+        const voucherType = item.voucherType || '';
+        
+        return `<button class="pv-btn" onclick="openDropdownPortal(event, this, '${formattedPV}', '${voucherType}')">${formattedPV}</button>`;
     }).join('');
     
     el.innerHTML = items;
