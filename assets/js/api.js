@@ -75,20 +75,8 @@ class ApiService {
   }
 
   // ============================================
-  // USER API
-  // ============================================
-  
-  async getUserInfo(options = {}) {
-    return this.request('getUserInfo', {}, options);
-  }
-
-  // ============================================
   // PAYMENT VOUCHER API
   // ============================================
-  
-  async processForm(formData, options = {}) {
-    return this.request('processForm', formData, options);
-  }
   
   async getNextPVNumber(voucherType, options = {}) {
     return this.request('getNextPVNumber', { voucherType }, options);
@@ -102,8 +90,20 @@ class ApiService {
     return this.request('getVoucherByNumber', { pvNumber, voucherType }, options);
   }
   
+  async processForm(formData, options = {}) {
+    return this.request('processForm', formData, options);
+  }
+  
   async updateVoucher(formData, options = {}) {
     return this.request('updateVoucher', formData, options);
+  }
+
+  // ============================================
+  // USER API
+  // ============================================
+  
+  async getUserInfo(options = {}) {
+    return this.request('getUserInfo', {}, options);
   }
 
   // ============================================
@@ -118,16 +118,8 @@ class ApiService {
     return this.request('getInventoryCategories', {}, options);
   }
   
-  async getInventoryCategoryDetails(categoryCode, options = {}) {
-    return this.request('getInventoryCategoryDetails', { categoryCode }, options);
-  }
-  
   async addNewInventory(formData, options = {}) {
     return this.request('addNewInventory', formData, options);
-  }
-  
-  async restockInventory(formData, options = {}) {
-    return this.request('restockInventory', formData, options);
   }
   
   async getPurchaseReportData(fromDate, toDate, options = {}) {
@@ -142,12 +134,12 @@ class ApiService {
     return this.request('getInventoryListData', {}, options);
   }
   
-  async removeInventory(inventoryCode, options = {}) {
-    return this.request('removeInventory', { inventoryCode }, options);
-  }
-  
   async recordInventoryUsage(formData, options = {}) {
     return this.request('recordInventoryUsage', formData, options);
+  }
+  
+  async removeInventory(inventoryCode, options = {}) {
+    return this.request('removeInventory', { inventoryCode }, options);
   }
 
   // ============================================
@@ -158,24 +150,12 @@ class ApiService {
     return this.request('generateAssetCode', { assetType }, options);
   }
   
-  async getAssetLifeSpan(assetType, options = {}) {
-    return this.request('getAssetLifeSpan', { assetType }, options);
-  }
-  
-  async getDepreciationRate(assetType, options = {}) {
-    return this.request('getDepreciationRate', { assetType }, options);
-  }
-  
   async addNewAsset(formData, options = {}) {
     return this.request('addNewAsset', formData, options);
   }
   
   async getDetailedRegister(options = {}) {
     return this.request('getDetailedRegister', {}, options);
-  }
-  
-  async getSummaryRegister(options = {}) {
-    return this.request('getSummaryRegister', {}, options);
   }
   
   async updateAssetStatus(assetName, newStatus, options = {}) {
@@ -198,14 +178,6 @@ class ApiService {
     return this.request('getInvestmentsByDateRange', { fromDate, toDate }, options);
   }
   
-  async getUniqueInvestmentTypes(options = {}) {
-    return this.request('getUniqueInvestmentTypes', {}, options);
-  }
-  
-  async getUniqueBanks(options = {}) {
-    return this.request('getUniqueBanks', {}, options);
-  }
-  
   async getMaturedInvestments(toDate, options = {}) {
     return this.request('getMaturedInvestments', { toDate }, options);
   }
@@ -213,10 +185,6 @@ class ApiService {
   // ============================================
   // UTILITY API
   // ============================================
-  
-  async debugGetSheetColumns(options = {}) {
-    return this.request('debugGetSheetColumns', {}, options);
-  }
   
   async testConnection(options = {}) {
     try {
@@ -233,7 +201,6 @@ class ApiService {
     }
   }
   
-  // Clear cache for specific action or all
   clearCache(action = null) {
     if (action) {
       const keysToDelete = [];
@@ -252,32 +219,31 @@ class ApiService {
 // Create global API instance
 window.API = new ApiService();
 
-// For backward compatibility with existing modules
+// For backward compatibility
 window.callGAS = async function(action, data = {}) {
   console.warn('callGAS is deprecated. Use API.[method] instead.');
   
-  // Map actions to API methods
   const actionMap = {
-    'getUserInfo': () => API.getUserInfo(),
-    'processForm': () => API.processForm(data.formData ? JSON.parse(data.formData) : data),
     'getNextPVNumber': () => API.getNextPVNumber(data.voucherType),
     'getPVNumbersByType': () => API.getPVNumbersByType(),
     'getVoucherByNumber': () => API.getVoucherByNumber(data.pvNumber, data.voucherType),
-    'updateVoucher': () => API.updateVoucher(data.formData ? JSON.parse(data.formData) : data),
+    'processForm': () => API.processForm(data),
+    'updateVoucher': () => API.updateVoucher(data),
+    'getUserInfo': () => API.getUserInfo(),
     'generateInventoryCategoryCode': () => API.generateInventoryCategoryCode(),
     'getInventoryCategories': () => API.getInventoryCategories(),
-    'addNewInventory': () => API.addNewInventory(data.formData ? JSON.parse(data.formData) : data),
+    'addNewInventory': () => API.addNewInventory(data),
     'getPurchaseReportData': () => API.getPurchaseReportData(data.fromDate, data.toDate),
     'getUsageReportData': () => API.getUsageReportData(data.fromDate, data.toDate),
     'getInventoryListData': () => API.getInventoryListData(),
-    'recordInventoryUsage': () => API.recordInventoryUsage(data.formData ? JSON.parse(data.formData) : data),
+    'recordInventoryUsage': () => API.recordInventoryUsage(data),
     'removeInventory': () => API.removeInventory(data.inventoryCode),
     'generateAssetCode': () => API.generateAssetCode(data.assetType),
-    'addNewAsset': () => API.addNewAsset(data.formData ? JSON.parse(data.formData) : data),
+    'addNewAsset': () => API.addNewAsset(data),
     'getDetailedRegister': () => API.getDetailedRegister(),
     'updateAssetStatus': () => API.updateAssetStatus(data.assetName, data.newStatus),
     'generateInvestmentCode': () => API.generateInvestmentCode(data.investmentType),
-    'addNewInvestment': () => API.addNewInvestment(data.formData ? JSON.parse(data.formData) : data),
+    'addNewInvestment': () => API.addNewInvestment(data),
     'getInvestmentsByDateRange': () => API.getInvestmentsByDateRange(data.fromDate, data.toDate),
     'getMaturedInvestments': () => API.getMaturedInvestments(data.toDate)
   };
