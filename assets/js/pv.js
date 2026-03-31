@@ -12,7 +12,6 @@ let nextPvNumber = null;
 // ============================================
 
 function initPVModule() {
-    console.log('PV Module initializing...');
     const today = new Date().toISOString().split('T')[0];
     const dateField = document.getElementById('date');
     if (dateField) dateField.value = today;
@@ -47,9 +46,9 @@ function initPVModule() {
 // ============================================
 
 function updateVoucherTypeFields() {
-    const voucherType = document.getElementById('voucherType').value;
-    const bankField = document.getElementById('bankField');
-    const chequeNumberField = document.getElementById('chequeNumberField');
+    var voucherType = document.getElementById('voucherType').value;
+    var bankField = document.getElementById('bankField');
+    var chequeNumberField = document.getElementById('chequeNumberField');
     
     if (voucherType === 'Cheque Payment Voucher') {
         if (bankField) bankField.style.display = 'flex';
@@ -57,9 +56,8 @@ function updateVoucherTypeFields() {
     } else {
         if (bankField) bankField.style.display = 'none';
         if (chequeNumberField) chequeNumberField.style.display = 'none';
-        
-        const bankInput = document.getElementById('bank');
-        const chequeInput = document.getElementById('chequeNumber');
+        var bankInput = document.getElementById('bank');
+        var chequeInput = document.getElementById('chequeNumber');
         if (bankInput) bankInput.value = '';
         if (chequeInput) chequeInput.value = '';
     }
@@ -70,7 +68,6 @@ function updateVoucherTypeFields() {
 function toggleWithholdingTax() {
     const checkbox = document.getElementById('withholdingTaxCheckbox');
     const taxField = document.getElementById('withholdingTaxAmount');
-    
     if (checkbox && taxField) {
         taxField.style.display = checkbox.checked ? 'block' : 'none';
         if (!checkbox.checked) {
@@ -80,105 +77,111 @@ function toggleWithholdingTax() {
 }
 
 // ============================================
-// API CALLS - DIRECT WITH JSONP (NO LOADING OVERLAY)
+// MODAL HELPERS
+// ============================================
+
+function showModal(html) {
+    let modal = document.getElementById('loading-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'loading-modal';
+        modal.className = 'modal';
+        document.body.appendChild(modal);
+    }
+    modal.innerHTML = `<div class="modal-content" id="modal-message">${html}</div>`;
+    modal.style.display = 'flex';
+}
+
+function hideModal() {
+    const modal = document.getElementById('loading-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function showLoading() {
+    showModal('<div class="loader"></div><div>Processing your voucher, please wait...</div>');
+}
+
+function showSuccess(action = 'created') {
+    showModal(
+        '<div class="success-message">Voucher ' + action + ' successfully!</div>' +
+        '<br><button class="download-button" style="background:#1976d2;margin-top:12px;" onclick="previewVoucherFromLast()">View & Print</button>' +
+        '<br><button class="modal-close-button" onclick="hideModal(); resetFormAfterUpdate();">Close</button>'
+    );
+    
+    setTimeout(function() {
+        var voucherType = document.getElementById('voucherType');
+        if (voucherType) fetchNextPVNumber(voucherType.value);
+        if (action === 'created') {
+            clearFormExceptPVDateType();
+        }
+        fetchPVTable();
+    }, 500);
+}
+
+function showError(error) {
+    showModal(
+        '<div class="modal-error-message">Error: ' + (error.message || error) + '</div>' +
+        '<button class="modal-close-button" onclick="hideModal()">Close</button>'
+    );
+}
+
+function clearFormExceptPVDateType() {
+    var ids = [
+        'invoiceNo', 'invoiceDate', 'address',
+        'payableTo', 'amount', 'transactionDetails',
+        'bank', 'chequeNumber', 'accountCode',
+        'requestedBy', 'reviewedBy', 'authorizedBy',
+        'withholdingTaxAmount'
+    ];
+    ids.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    var deptSelect = document.getElementById('department');
+    if (deptSelect) deptSelect.value = 'Accounts';
+    var wtCheckbox = document.getElementById('withholdingTaxCheckbox');
+    if (wtCheckbox) {
+        wtCheckbox.checked = false;
+        var wtField = document.getElementById('withholdingTaxAmount');
+        if (wtField) {
+            wtField.style.display = 'none';
+            wtField.value = '';
+        }
+    }
+}
+
+// ============================================
+// API CALLS
 // ============================================
 
 function fetchNextPVNumber(voucherType) {
-    if (!window.API) {
-        console.error('API not available');
-        // Generate a temporary PV number as fallback
-        const tempNumber = generateTempPVNumber(voucherType);
-        nextPvNumber = tempNumber;
-        const pvField = document.getElementById('pvNumber');
-        const pvDisplay = document.getElementById('pvNumberDisplay');
-        if (pvField) pvField.value = tempNumber;
-        if (pvDisplay) pvDisplay.textContent = tempNumber;
-        return;
-    }
-    
-    console.log('Fetching next PV number for type:', voucherType);
-    
-    // Call API without loading overlay
-    API.getNextPVNumber(voucherType, { showLoading: false })
-        .then(response => {
-            console.log('PV Number response:', response);
-            
-            let pvNumber = null;
-            
-            // Handle different response formats
-            if (typeof response === 'string') {
-                pvNumber = response;
-            } else if (response && response.pvNumber) {
-                pvNumber = response.pvNumber;
-            } else if (response && typeof response === 'object') {
-                // Try to extract PV number from object
-                pvNumber = response.data || response.result || response;
-                if (typeof pvNumber === 'object') {
-                    pvNumber = Object.values(pvNumber)[0];
-                }
-            }
-            
-            if (pvNumber && typeof pvNumber === 'string' && pvNumber.startsWith('PVNO')) {
-                nextPvNumber = pvNumber;
-                if (!currentlyEditingPvNumber) {
-                    const pvField = document.getElementById('pvNumber');
-                    const pvDisplay = document.getElementById('pvNumberDisplay');
-                    if (pvField) pvField.value = pvNumber;
-                    if (pvDisplay) pvDisplay.textContent = pvNumber;
-                }
-            } else {
-                console.warn('Invalid PV number format, using fallback');
-                const fallbackNumber = generateTempPVNumber(voucherType);
-                nextPvNumber = fallbackNumber;
-                const pvField = document.getElementById('pvNumber');
-                const pvDisplay = document.getElementById('pvNumberDisplay');
-                if (pvField) pvField.value = fallbackNumber;
-                if (pvDisplay) pvDisplay.textContent = fallbackNumber;
+    google.script.run
+        .withSuccessHandler(function(pvNumber) {
+            nextPvNumber = pvNumber;
+            if (!currentlyEditingPvNumber) {
+                var pvField = document.getElementById('pvNumber');
+                var pvDisplay = document.getElementById('pvNumberDisplay');
+                if (pvField) pvField.value = pvNumber;
+                if (pvDisplay) pvDisplay.textContent = pvNumber;
             }
         })
-        .catch(error => {
+        .withFailureHandler(function(error) {
             console.error('Error fetching next PV number:', error);
-            // Generate fallback PV number on error
-            const fallbackNumber = generateTempPVNumber(voucherType);
-            nextPvNumber = fallbackNumber;
-            const pvField = document.getElementById('pvNumber');
-            const pvDisplay = document.getElementById('pvNumberDisplay');
-            if (pvField) pvField.value = fallbackNumber;
-            if (pvDisplay) pvDisplay.textContent = fallbackNumber;
-        });
-}
-
-// Generate a temporary PV number if API fails
-function generateTempPVNumber(voucherType) {
-    const prefixes = {
-        'Payment Voucher': 'PVNO.FT',
-        'Cash Payment Voucher': 'PVNO.CH',
-        'Cheque Payment Voucher': 'PVNO.CQ'
-    };
-    const prefix = prefixes[voucherType] || 'PVNO';
-    const timestamp = Date.now().toString().slice(-5);
-    return prefix + timestamp.padStart(5, '0');
+        })
+        .getNextPVNumber(voucherType);
 }
 
 function fetchPVTable() {
-    if (!window.API) {
-        console.error('API not available');
-        return;
-    }
-    
-    API.getPVNumbersByType({ showLoading: false })
-        .then(response => {
-            if (response && !response.error) {
-                renderPVList('cash-payment-list', response['Cash Payment Voucher']);
-                renderPVList('cheque-list', response['Cheque Payment Voucher']);
-                renderPVList('payment-list', response['Payment Voucher']);
-            } else {
-                console.error('Error fetching PV table:', response);
-            }
+    google.script.run
+        .withSuccessHandler(function(data) {
+            renderPVList('cash-payment-list', data['Cash Payment Voucher']);
+            renderPVList('cheque-list', data['Cheque Payment Voucher']);
+            renderPVList('payment-list', data['Payment Voucher']);
         })
-        .catch(error => {
+        .withFailureHandler(function(error) {
             console.error('Error fetching PV table:', error);
-        });
+        })
+        .getPVNumbersByType();
 }
 
 // ============================================
@@ -188,20 +191,14 @@ function fetchPVTable() {
 function renderPVList(elementId, pvList) {
     const el = document.getElementById(elementId);
     if (!el) return;
-    
     if (!pvList || !pvList.length) {
         el.innerHTML = '<div style="color:#aaa;">None</div>';
         return;
     }
     
     const items = pvList.slice(-5).reverse().map(item => {
-        let pvNumber = item.pvNumber || item;
-        if (typeof item === 'object') {
-            pvNumber = item.pvNumber;
-        }
-        
-        const match = String(pvNumber).match(/(PVNO\.[A-Z]{2})(\d+)/);
-        let formattedPV = pvNumber;
+        const match = item.pvNumber.match(/(PVNO\.[A-Z]{2})(\d+)/);
+        let formattedPV = item.pvNumber;
         
         if (match) {
             const prefix = match[1];
@@ -209,9 +206,7 @@ function renderPVList(elementId, pvList) {
             formattedPV = prefix + num;
         }
         
-        const voucherType = item.voucherType || '';
-        
-        return `<button class="pv-btn" onclick="openDropdownPortal(event, this, '${formattedPV}', '${voucherType}')">${formattedPV}</button>`;
+        return `<button class="pv-btn" onclick="openDropdownPortal(event, this, '${formattedPV}', '${item.voucherType}')">${formattedPV}</button>`;
     }).join('');
     
     el.innerHTML = items;
@@ -223,7 +218,6 @@ function renderPVList(elementId, pvList) {
 
 function openDropdownPortal(event, btn, pvNumber, voucherType) {
     closeDropdownPortal();
-    
     const rect = btn.getBoundingClientRect();
     const portal = document.getElementById('pv-dropdown-portal');
     if (!portal) return;
@@ -260,79 +254,100 @@ function closeDropdownPortal() {
 
 function viewVoucher(pvNumber, voucherType) {
     closeDropdownPortal();
-    
-    API.getVoucherByNumber(pvNumber, voucherType, { showLoading: false })
-        .then(response => {
-            if (response && !response.error && response.pvNumber) {
-                showVoucherPreview(response);
-            } else {
+    showLoading();
+    google.script.run
+        .withSuccessHandler(function(voucherData) {
+            hideModal();
+            if (!voucherData || !voucherData.pvNumber) {
                 alert('No voucher data found for PV Number: ' + pvNumber);
+                return;
             }
+            showVoucherPreview(voucherData);
         })
-        .catch(error => {
-            console.error('Error loading voucher:', error);
+        .withFailureHandler(function(error) {
+            hideModal();
             alert('Error loading voucher: ' + (error.message || error));
-        });
+        })
+        .getVoucherByNumber(pvNumber, voucherType);
 }
 
 function editVoucher(pvNumber, voucherType) {
     closeDropdownPortal();
+    showLoading();
     
     currentlyEditingPvNumber = pvNumber;
     
-    const pvDisplay = document.getElementById('pvNumberDisplay');
+    var pvDisplay = document.getElementById('pvNumberDisplay');
     if (pvDisplay) pvDisplay.textContent = pvNumber;
     
-    API.getVoucherByNumber(pvNumber, voucherType, { showLoading: false })
-        .then(response => {
-            if (response && !response.error && response.pvNumber) {
-                populateFormForEditing(response);
-                fetchNextPVNumber(response.voucherType);
-            } else {
+    google.script.run
+        .withSuccessHandler(function(voucherData) {
+            if (!voucherData || !voucherData.pvNumber) {
+                hideModal();
                 alert('No voucher data found for PV Number: ' + pvNumber);
+                return;
             }
+            populateFormForEditing(voucherData);
+            fetchNextPVNumber(voucherData.voucherType);
+            hideModal();
         })
-        .catch(error => {
-            console.error('Error loading voucher:', error);
+        .withFailureHandler(function(error) {
+            hideModal();
             alert('Error loading voucher for editing: ' + (error.message || error));
-        });
+        })
+        .getVoucherByNumber(pvNumber, voucherType);
 }
 
 function populateFormForEditing(voucherData) {
-    const pvContainer = document.getElementById('pvNumber-container');
-    const dateContainer = document.getElementById('date-container');
+    var pvContainer = document.getElementById('pvNumber-container');
+    var dateContainer = document.getElementById('date-container');
     if (pvContainer) pvContainer.style.display = 'flex';
     if (dateContainer) dateContainer.style.display = 'flex';
     
-    const pvDisplay = document.getElementById('pvNumberDisplay');
-    const pvNumberField = document.getElementById('pvNumber');
+    var pvDisplay = document.getElementById('pvNumberDisplay');
+    var pvNumberField = document.getElementById('pvNumber');
     if (pvDisplay) pvDisplay.textContent = voucherData.pvNumber || '';
     if (pvNumberField) pvNumberField.value = voucherData.pvNumber || '';
     
-    const updateBtn = document.getElementById('updateButton');
-    const submitBtn = document.querySelector('#pvForm .submit-button');
+    var updateBtn = document.getElementById('updateButton');
+    var submitBtn = document.querySelector('#pvForm .submit-button');
     if (updateBtn) updateBtn.style.display = 'block';
     if (submitBtn) submitBtn.style.display = 'none';
     
-    // Populate form fields
-    document.getElementById('voucherType').value = voucherData.voucherType || '';
-    document.getElementById('date').value = voucherData.date || '';
-    document.getElementById('invoiceNo').value = voucherData.invoiceNo || '';
-    document.getElementById('invoiceDate').value = voucherData.invoiceDate || '';
-    document.getElementById('address').value = voucherData.address || '';
-    document.getElementById('payableTo').value = voucherData.payableTo || '';
-    document.getElementById('amount').value = voucherData.amount || '';
-    document.getElementById('department').value = voucherData.department || 'Accounts';
-    document.getElementById('accountCode').value = voucherData.accountCode || '';
-    document.getElementById('transactionDetails').value = voucherData.transactionDetails || '';
-    document.getElementById('bank').value = voucherData.bank || '';
-    document.getElementById('chequeNumber').value = voucherData.chequeNumber || '';
-    document.getElementById('requestedBy').value = voucherData.requestedBy || '';
-    document.getElementById('reviewedBy').value = voucherData.reviewedBy || '';
-    document.getElementById('authorizedBy').value = voucherData.authorizedBy || '';
+    var voucherType = document.getElementById('voucherType');
+    var dateField = document.getElementById('date');
+    var invoiceNo = document.getElementById('invoiceNo');
+    var invoiceDate = document.getElementById('invoiceDate');
+    var address = document.getElementById('address');
+    var payableTo = document.getElementById('payableTo');
+    var amount = document.getElementById('amount');
+    var department = document.getElementById('department');
+    var accountCode = document.getElementById('accountCode');
+    var transactionDetails = document.getElementById('transactionDetails');
+    var bank = document.getElementById('bank');
+    var chequeNumber = document.getElementById('chequeNumber');
+    var requestedBy = document.getElementById('requestedBy');
+    var reviewedBy = document.getElementById('reviewedBy');
+    var authorizedBy = document.getElementById('authorizedBy');
     
-    const wtCheckbox = document.getElementById('withholdingTaxCheckbox');
-    const wtField = document.getElementById('withholdingTaxAmount');
+    if (voucherType) voucherType.value = voucherData.voucherType || '';
+    if (dateField) dateField.value = voucherData.date || '';
+    if (invoiceNo) invoiceNo.value = voucherData.invoiceNo || '';
+    if (invoiceDate) invoiceDate.value = voucherData.invoiceDate || '';
+    if (address) address.value = voucherData.address || '';
+    if (payableTo) payableTo.value = voucherData.payableTo || '';
+    if (amount) amount.value = voucherData.amount || '';
+    if (department) department.value = voucherData.department || 'Accounts';
+    if (accountCode) accountCode.value = voucherData.accountCode || '';
+    if (transactionDetails) transactionDetails.value = voucherData.transactionDetails || '';
+    if (bank) bank.value = voucherData.bank || '';
+    if (chequeNumber) chequeNumber.value = voucherData.chequeNumber || '';
+    if (requestedBy) requestedBy.value = voucherData.requestedBy || '';
+    if (reviewedBy) reviewedBy.value = voucherData.reviewedBy || '';
+    if (authorizedBy) authorizedBy.value = voucherData.authorizedBy || '';
+    
+    var wtCheckbox = document.getElementById('withholdingTaxCheckbox');
+    var wtField = document.getElementById('withholdingTaxAmount');
     if (wtCheckbox && wtField) {
         if (voucherData.withholdingTaxAmount) {
             wtCheckbox.checked = true;
@@ -347,11 +362,12 @@ function populateFormForEditing(voucherData) {
     
     updateVoucherTypeFields();
     
-    const formContainer = document.querySelector('.form-container');
+    var formContainer = document.querySelector('.form-container');
     if (formContainer) formContainer.scrollIntoView({ behavior: 'smooth' });
 }
 
 function submitForm() {
+    showLoading();
     const formObject = {
         voucherType: document.getElementById('voucherType').value,
         pvNumber: document.getElementById('pvNumber').value,
@@ -372,31 +388,20 @@ function submitForm() {
         withholdingTaxAmount: document.getElementById('withholdingTaxCheckbox').checked ? 
             document.getElementById('withholdingTaxAmount').value : null
     };
-    
     formObject.amountInWords = convertNumberToWords(formObject.amount);
     lastSubmittedVoucherData = formObject;
-    
-    API.processForm(formObject, { showLoading: false })
-        .then(response => {
-            if (response && !response.error) {
-                alert('Voucher created successfully!');
-                setTimeout(() => {
-                    const voucherType = document.getElementById('voucherType');
-                    if (voucherType) fetchNextPVNumber(voucherType.value);
-                    clearFormExceptPVDateType();
-                    fetchPVTable();
-                }, 500);
-            } else {
-                alert('Error creating voucher: ' + (response?.error || 'Unknown error'));
-            }
+    google.script.run
+        .withSuccessHandler(function() { 
+            showSuccess(); 
         })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error creating voucher: ' + (error.message || error));
-        });
+        .withFailureHandler(function(error) { 
+            showError(error); 
+        })
+        .processForm(formObject);
 }
 
 function updateForm() {
+    showLoading();
     const formObject = {
         pvNumber: document.getElementById('pvNumber').value,
         voucherType: document.getElementById('voucherType').value,
@@ -417,68 +422,37 @@ function updateForm() {
         withholdingTaxAmount: document.getElementById('withholdingTaxCheckbox').checked ? 
             document.getElementById('withholdingTaxAmount').value : null
     };
-    
     formObject.amountInWords = convertNumberToWords(formObject.amount);
     lastSubmittedVoucherData = formObject;
     
-    API.updateVoucher(formObject, { showLoading: false })
-        .then(response => {
-            if (response && !response.error) {
-                alert('Voucher updated successfully!');
-                fetchPVTable();
-                resetFormAfterUpdate();
-            } else {
-                alert('Error updating voucher: ' + (response?.error || 'Unknown error'));
-            }
+    google.script.run
+        .withSuccessHandler(function() {
+            showSuccess('updated');
+            fetchPVTable();
         })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Error updating voucher: ' + (error.message || error));
-        });
+        .withFailureHandler(function(error) {
+            showError(error);
+        })
+        .updateVoucher(formObject);
 }
 
 function resetFormAfterUpdate() {
-    const updateBtn = document.getElementById('updateButton');
-    const submitBtn = document.querySelector('#pvForm .submit-button');
+    var updateBtn = document.getElementById('updateButton');
+    var submitBtn = document.querySelector('#pvForm .submit-button');
     if (updateBtn) updateBtn.style.display = 'none';
     if (submitBtn) submitBtn.style.display = 'block';
     
     currentlyEditingPvNumber = null;
+    
     clearFormExceptPVDateType();
     
-    const pvDisplay = document.getElementById('pvNumberDisplay');
+    var pvDisplay = document.getElementById('pvNumberDisplay');
     if (pvDisplay && nextPvNumber) pvDisplay.textContent = nextPvNumber;
     
-    const pvContainer = document.getElementById('pvNumber-container');
-    const dateContainer = document.getElementById('date-container');
+    var pvContainer = document.getElementById('pvNumber-container');
+    var dateContainer = document.getElementById('date-container');
     if (pvContainer) pvContainer.style.display = 'none';
     if (dateContainer) dateContainer.style.display = 'none';
-}
-
-function clearFormExceptPVDateType() {
-    const ids = [
-        'invoiceNo', 'invoiceDate', 'address', 'payableTo', 'amount',
-        'transactionDetails', 'bank', 'chequeNumber', 'accountCode',
-        'requestedBy', 'reviewedBy', 'authorizedBy', 'withholdingTaxAmount'
-    ];
-    
-    ids.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-    });
-    
-    const deptSelect = document.getElementById('department');
-    if (deptSelect) deptSelect.value = 'Accounts';
-    
-    const wtCheckbox = document.getElementById('withholdingTaxCheckbox');
-    if (wtCheckbox) {
-        wtCheckbox.checked = false;
-        const wtField = document.getElementById('withholdingTaxAmount');
-        if (wtField) {
-            wtField.style.display = 'none';
-            wtField.value = '';
-        }
-    }
 }
 
 // ============================================
@@ -487,11 +461,11 @@ function clearFormExceptPVDateType() {
 
 function showVoucherPreview(voucherData) {
     if (!voucherData || typeof voucherData !== 'object') {
-        alert('Invalid voucher data received');
+        console.error('Invalid voucher data received:', voucherData);
+        alert('Error: Invalid voucher data. Please try again.');
         return;
     }
-    
-    // Default values
+
     voucherData = voucherData || {};
     voucherData.voucherType = voucherData.voucherType || 'Payment Voucher';
     voucherData.pvNumber = voucherData.pvNumber || '';
@@ -511,87 +485,104 @@ function showVoucherPreview(voucherData) {
     voucherData.reviewedBy = voucherData.reviewedBy || '';
     voucherData.authorizedBy = voucherData.authorizedBy || '';
     voucherData.withholdingTaxAmount = voucherData.withholdingTaxAmount || '';
-    
+
     const typeHeading = {
         'Payment Voucher': 'FUNDS TRANSFER PAYMENT VOUCHER',
         'Cash Payment Voucher': 'CASH PAYMENT VOUCHER',
         'Cheque Payment Voucher': 'CHEQUE DISBURSEMENT PAYMENT VOUCHER'
     };
-    
-    const voucherTypeHeading = document.getElementById('voucherTypeHeading');
+
+    var voucherTypeHeading = document.getElementById('voucherTypeHeading');
     if (voucherTypeHeading) {
         voucherTypeHeading.innerHTML = `<b>${typeHeading[voucherData.voucherType] || 'PAYMENT VOUCHER'}</b>`;
     }
-    
-    // Handle cheque fields
-    const chequeFields = document.getElementById('preview-cheque-fields');
+
+    var chequeFields = document.getElementById('preview-cheque-fields');
     if (chequeFields) {
         if (voucherData.voucherType === 'Cheque Payment Voucher') {
             chequeFields.style.display = 'flex';
-            const previewBank = document.getElementById('preview-bank');
-            const previewCheque = document.getElementById('preview-chequeNumber');
+            var previewBank = document.getElementById('preview-bank');
+            var previewCheque = document.getElementById('preview-chequeNumber');
             if (previewBank) previewBank.textContent = voucherData.bank;
             if (previewCheque) previewCheque.textContent = voucherData.chequeNumber;
         } else {
             chequeFields.style.display = 'none';
         }
     }
-    
-    // Handle withholding tax
-    const withholdingTaxRow = document.getElementById('preview-withholdingTax-row');
+
+    var withholdingTaxRow = document.getElementById('preview-withholdingTax-row');
     if (withholdingTaxRow) {
         if (voucherData.withholdingTaxAmount) {
             withholdingTaxRow.style.display = 'flex';
-            const previewTax = document.getElementById('preview-withholdingTax');
+            var previewTax = document.getElementById('preview-withholdingTax');
             if (previewTax) previewTax.textContent = voucherData.withholdingTaxAmount;
         } else {
             withholdingTaxRow.style.display = 'none';
         }
     }
+
+    var previewPvNumber = document.getElementById('preview-pvNumber');
+    var previewPayableTo = document.getElementById('preview-payableTo');
+    var previewDate = document.getElementById('preview-date');
+    var previewAddress = document.getElementById('preview-address');
+    var previewDepartment = document.getElementById('preview-department');
+    var previewAccountCode = document.getElementById('preview-accountCode');
+    var previewInvoiceDate = document.getElementById('preview-invoiceDate');
+    var previewInvoiceNo = document.getElementById('preview-invoiceNo');
+    var previewAmount = document.getElementById('preview-amount');
+    var previewAmountInWords = document.getElementById('preview-amountInWords');
+    var previewTransactionDetails = document.getElementById('preview-transactionDetails');
+    var previewRequestedBy = document.getElementById('preview-requestedBy');
+    var previewReviewedBy = document.getElementById('preview-reviewedBy');
+    var previewAuthorizedBy = document.getElementById('preview-authorizedBy');
     
-    // Populate preview fields
-    document.getElementById('preview-pvNumber').textContent = voucherData.pvNumber;
-    document.getElementById('preview-payableTo').textContent = voucherData.payableTo;
-    document.getElementById('preview-date').textContent = voucherData.date;
-    document.getElementById('preview-address').textContent = voucherData.address;
-    document.getElementById('preview-department').textContent = voucherData.department;
-    document.getElementById('preview-accountCode').textContent = voucherData.accountCode;
-    document.getElementById('preview-invoiceDate').textContent = voucherData.invoiceDate;
-    document.getElementById('preview-invoiceNo').textContent = voucherData.invoiceNo;
+    if (previewPvNumber) previewPvNumber.textContent = voucherData.pvNumber;
+    if (previewPayableTo) previewPayableTo.textContent = voucherData.payableTo;
+    if (previewDate) previewDate.textContent = voucherData.date;
+    if (previewAddress) previewAddress.textContent = voucherData.address;
+    if (previewDepartment) previewDepartment.textContent = voucherData.department;
+    if (previewAccountCode) previewAccountCode.textContent = voucherData.accountCode;
+    if (previewInvoiceDate) previewInvoiceDate.textContent = voucherData.invoiceDate;
+    if (previewInvoiceNo) previewInvoiceNo.textContent = voucherData.invoiceNo;
     
-    const amountNum = parseFloat(voucherData.amount);
-    document.getElementById('preview-amount').textContent = amountNum.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-        useGrouping: true
-    });
+    if (previewAmount) {
+        const amountNum = parseFloat(voucherData.amount);
+        previewAmount.textContent = amountNum.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+            useGrouping: true
+        });
+    }
     
-    document.getElementById('preview-amountInWords').textContent = voucherData.amountInWords;
-    document.getElementById('preview-transactionDetails').textContent = voucherData.transactionDetails;
-    document.getElementById('preview-requestedBy').textContent = voucherData.requestedBy;
-    document.getElementById('preview-reviewedBy').textContent = voucherData.reviewedBy;
-    document.getElementById('preview-authorizedBy').textContent = voucherData.authorizedBy;
-    document.getElementById('preview-receivedBy').textContent = '';
+    if (previewAmountInWords) previewAmountInWords.textContent = voucherData.amountInWords;
+    if (previewTransactionDetails) previewTransactionDetails.textContent = voucherData.transactionDetails;
+    if (previewRequestedBy) previewRequestedBy.textContent = voucherData.requestedBy;
+    if (previewReviewedBy) previewReviewedBy.textContent = voucherData.reviewedBy;
+    if (previewAuthorizedBy) previewAuthorizedBy.textContent = voucherData.authorizedBy;
     
-    const voucherModal = document.getElementById('voucher-preview-modal');
+    var previewReceivedBy = document.getElementById('preview-receivedBy');
+    if (previewReceivedBy) previewReceivedBy.textContent = '';
+    
+    var voucherModal = document.getElementById('voucher-preview-modal');
     if (voucherModal) voucherModal.style.display = 'block';
 }
 
 function closeVoucherModal() {
-    const voucherModal = document.getElementById('voucher-preview-modal');
+    var voucherModal = document.getElementById('voucher-preview-modal');
     if (voucherModal) voucherModal.style.display = 'none';
 }
 
 function previewVoucherFromLast() {
     if (!lastSubmittedVoucherData) {
-        alert('No voucher data to preview');
+        alert("No voucher data to preview.");
         return;
     }
+    hideModal();
     showVoucherPreview(lastSubmittedVoucherData);
 }
 
 function printVoucher() {
-    const actions = document.querySelector('.modal-actions');
+    var actions = document.querySelector('.modal-actions');
     if (actions) actions.style.display = 'none';
     window.print();
     setTimeout(() => {
@@ -599,22 +590,17 @@ function printVoucher() {
     }, 500);
 }
 
-// ============================================
-// UTILITY FUNCTIONS
-// ============================================
-
 function convertNumberToWords(amount) {
     if (!amount || isNaN(amount)) return '';
     
-    const amt = parseFloat(amount).toFixed(2);
-    const parts = amt.split('.');
-    let cedis = parseInt(parts[0], 10);
-    const pesewas = parseInt(parts[1], 10);
-    
-    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
-    const teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-    const thousands = ['', 'Thousand', 'Million', 'Billion'];
+    var amt = parseFloat(amount).toFixed(2);
+    var parts = amt.split('.');
+    var cedis = parseInt(parts[0], 10);
+    var pesewas = parseInt(parts[1], 10);
+    var ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'];
+    var teens = ['Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    var tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    var thousands = ['', 'Thousand', 'Million', 'Billion'];
     
     function chunkToWords(n) {
         let str = '';
@@ -639,7 +625,6 @@ function convertNumberToWords(amount) {
     let wordChunks = [];
     let chunkCount = 0;
     let tempCedis = cedis;
-    
     while (tempCedis > 0) {
         let chunk = tempCedis % 1000;
         if (chunk > 0) {
@@ -662,35 +647,47 @@ function convertNumberToWords(amount) {
     
     let cedisStr = wordChunks.length ? wordChunks.join(' ') + (cedis === 1 ? ' Ghana Cedi' : ' Ghana Cedis') : '';
     let pesewasStr = '';
-    
     if (pesewas > 0) {
         let pesewaWords = chunkToWords(pesewas);
         pesewasStr = (cedisStr ? ' and ' : '') + pesewaWords + (pesewas === 1 ? ' Pesewa' : ' Pesewas');
     }
-    
     return (cedisStr + pesewasStr).trim();
 }
 
-// ============================================
-// MODAL HELPERS
-// ============================================
+// Initialize PV Module
+function initPVModule() {
+    const today = new Date().toISOString().split('T')[0];
+    var dateField = document.getElementById('date');
+    if (dateField) dateField.value = today;
+    updateVoucherTypeFields();
+    fetchPVTable();
+}
 
-function showModal(html) {
-    let modal = document.getElementById('loading-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'loading-modal';
-        modal.className = 'modal';
-        document.body.appendChild(modal);
+// Event Listeners for PV Module
+window.addEventListener('click', function(event) {
+    var voucherModal = document.getElementById('voucher-preview-modal');
+    var loadingModal = document.getElementById('loading-modal');
+    
+    if (event.target === voucherModal) {
+        closeVoucherModal();
     }
-    modal.innerHTML = `<div class="modal-content" id="modal-message">${html}</div>`;
-    modal.style.display = 'flex';
-}
+    if (event.target === loadingModal) {
+        hideModal();
+    }
+    if (window.__pvPortalOpen) {
+        const portal = document.getElementById('pv-dropdown-portal');
+        if (portal && !portal.contains(event.target) && !event.target.classList.contains('pv-btn')) {
+            closeDropdownPortal();
+        }
+    }
+});
 
-function hideModal() {
-    const modal = document.getElementById('loading-modal');
-    if (modal) modal.style.display = 'none';
-}
+document.addEventListener('click', function(event) {
+    var portal = document.getElementById('pv-dropdown-portal');
+    if (portal && portal.contains(event.target)) {
+        event.stopPropagation();
+    }
+});
 
 // Export functions for global use
 window.initPVModule = initPVModule;
