@@ -1,6 +1,5 @@
- url=https://github.com/gapmobilebanker-starFile/assets/js/pv.js
 /* ============================================
-   PAYMENT VOUCHER MODULE JAVASCRIPT - FIXED
+   PAYMENT VOUCHER MODULE JAVASCRIPT - FIXED V2
    ============================================ */
 
 // Global variables for PV module
@@ -13,18 +12,26 @@ let nextPvNumber = null;
 // ============================================
 
 function initPVModule() {
-    console.log('Initializing PV Module...');
+    console.log('[PV] Initializing PV Module...');
     
     const today = new Date().toISOString().split('T')[0];
     const dateField = document.getElementById('date');
-    if (dateField) dateField.value = today;
+    if (dateField) {
+        dateField.value = today;
+        console.log('[PV] Set today date:', today);
+    }
     
-    updateVoucherTypeFields();
-    fetchPVTable();
-    setupPVEventListeners();
+    // Small delay to ensure DOM is ready
+    setTimeout(() => {
+        console.log('[PV] Starting delayed initialization tasks');
+        updateVoucherTypeFields();
+        fetchPVTable();
+        setupPVEventListeners();
+    }, 100);
 }
 
 function setupPVEventListeners() {
+    console.log('[PV] Setting up event listeners');
     // Close dropdown when clicking outside
     document.addEventListener('click', function(event) {
         if (window.__pvPortalOpen) {
@@ -52,14 +59,18 @@ function setupPVEventListeners() {
 // ============================================
 
 function updateVoucherTypeFields() {
+    console.log('[PV] updateVoucherTypeFields called');
     var voucherType = document.getElementById('voucherType');
-    if (!voucherType) return;
+    if (!voucherType) {
+        console.error('[PV] voucherType element not found');
+        return;
+    }
     
     var bankField = document.getElementById('bankField');
     var chequeNumberField = document.getElementById('chequeNumberField');
     
     var selectedType = voucherType.value;
-    console.log('Updating voucher type fields for:', selectedType);
+    console.log('[PV] Selected voucher type:', selectedType);
     
     if (selectedType === 'Cheque Payment Voucher') {
         if (bankField) bankField.style.display = 'flex';
@@ -92,6 +103,7 @@ function toggleWithholdingTax() {
 // ============================================
 
 function showModal(html) {
+    console.log('[PV] showModal called');
     let modal = document.getElementById('loading-modal');
     if (!modal) {
         modal = document.createElement('div');
@@ -104,15 +116,18 @@ function showModal(html) {
 }
 
 function hideModal() {
+    console.log('[PV] hideModal called');
     const modal = document.getElementById('loading-modal');
     if (modal) modal.style.display = 'none';
 }
 
 function showLoading() {
+    console.log('[PV] showLoading called');
     showModal('<div class="loader"></div><div>Processing your voucher, please wait...</div>');
 }
 
 function showSuccess(action = 'created') {
+    console.log('[PV] showSuccess called with action:', action);
     showModal(
         '<div class="success-message">Voucher ' + action + ' successfully!</div>' +
         '<br><button class="download-button" style="background:#1976d2;margin-top:12px;" onclick="previewVoucherFromLast()">View & Print</button>' +
@@ -130,6 +145,7 @@ function showSuccess(action = 'created') {
 }
 
 function showError(error) {
+    console.error('[PV] showError called:', error);
     showModal(
         '<div class="modal-error-message">Error: ' + (error.message || error) + '</div>' +
         '<button class="modal-close-button" onclick="hideModal()">Close</button>'
@@ -166,28 +182,34 @@ function clearFormExceptPVDateType() {
 // ============================================
 
 function fetchNextPVNumber(voucherType) {
-    console.log('Fetching next PV number for:', voucherType);
+    console.log('[PV] fetchNextPVNumber called for:', voucherType);
     
     if (!window.API) {
-        console.error('API not initialized');
+        console.error('[PV] API not initialized');
         const fallbackNumber = generateFallbackPVNumber(voucherType);
         updatePVNumberDisplay(fallbackNumber);
         return;
     }
 
-    API.getNextPVNumber(voucherType, { showLoading: false })
-        .then(function(pvNumber) {
-            console.log('Received PV number:', pvNumber);
-            nextPvNumber = pvNumber;
-            if (!currentlyEditingPvNumber) {
-                updatePVNumberDisplay(pvNumber);
+    window.API.getNextPVNumber(voucherType, { showLoading: false })
+        .then(function(response) {
+            console.log('[PV] getNextPVNumber response:', response);
+            const pvNumber = response.success !== false ? response : response.pvNumber || response;
+            if (pvNumber && typeof pvNumber === 'string') {
+                nextPvNumber = pvNumber;
+                if (!currentlyEditingPvNumber) {
+                    updatePVNumberDisplay(pvNumber);
+                }
+            } else {
+                console.error('[PV] Invalid PV number response:', response);
+                const fallback = generateFallbackPVNumber(voucherType);
+                updatePVNumberDisplay(fallback);
             }
         })
         .catch(function(error) {
-            console.error('Error fetching next PV number:', error);
-            // Generate a fallback PV number if API fails
+            console.error('[PV] Error fetching next PV number:', error);
             const fallbackNumber = generateFallbackPVNumber(voucherType);
-            console.log('Using fallback PV number:', fallbackNumber);
+            console.log('[PV] Using fallback PV number:', fallbackNumber);
             if (!currentlyEditingPvNumber) {
                 updatePVNumberDisplay(fallbackNumber);
             }
@@ -195,15 +217,20 @@ function fetchNextPVNumber(voucherType) {
 }
 
 function updatePVNumberDisplay(pvNumber) {
+    console.log('[PV] updatePVNumberDisplay called with:', pvNumber);
     var pvField = document.getElementById('pvNumber');
     var pvDisplay = document.getElementById('pvNumberDisplay');
     if (pvField) {
         pvField.value = pvNumber;
-        console.log('Updated pvNumber field to:', pvNumber);
+        console.log('[PV] Updated pvNumber field');
+    } else {
+        console.warn('[PV] pvNumber field not found');
     }
     if (pvDisplay) {
         pvDisplay.textContent = pvNumber;
-        console.log('Updated pvNumberDisplay to:', pvNumber);
+        console.log('[PV] Updated pvNumberDisplay');
+    } else {
+        console.warn('[PV] pvNumberDisplay element not found');
     }
 }
 
@@ -217,27 +244,27 @@ function generateFallbackPVNumber(voucherType) {
     const prefix = prefixes[voucherType] || 'PVNO.FT';
     const timestamp = Date.now().toString().slice(-5);
     const fallback = prefix + String(timestamp).padStart(5, '0');
-    console.log('Generated fallback PV number:', fallback);
+    console.log('[PV] Generated fallback PV number:', fallback);
     return fallback;
 }
 
 function fetchPVTable() {
-    console.log('Fetching PV table...');
+    console.log('[PV] fetchPVTable called');
     
     if (!window.API) {
-        console.error('API not initialized');
+        console.error('[PV] API not initialized');
         return;
     }
 
-    API.getPVNumbersByType({ showLoading: false })
+    window.API.getPVNumbersByType({ showLoading: false })
         .then(function(data) {
-            console.log('Received PV table data:', data);
+            console.log('[PV] getPVNumbersByType response:', data);
             renderPVList('cash-payment-list', data['Cash Payment Voucher']);
             renderPVList('cheque-list', data['Cheque Payment Voucher']);
             renderPVList('payment-list', data['Payment Voucher']);
         })
         .catch(function(error) {
-            console.error('Error fetching PV table:', error);
+            console.error('[PV] Error fetching PV table:', error);
         });
 }
 
@@ -246,8 +273,12 @@ function fetchPVTable() {
 // ============================================
 
 function renderPVList(elementId, pvList) {
+    console.log('[PV] renderPVList called for:', elementId, 'with list:', pvList);
     const el = document.getElementById(elementId);
-    if (!el) return;
+    if (!el) {
+        console.warn('[PV] Element not found:', elementId);
+        return;
+    }
     if (!pvList || !pvList.length) {
         el.innerHTML = '<div style="color:#aaa;">None</div>';
         return;
@@ -310,12 +341,13 @@ function closeDropdownPortal() {
 // ============================================
 
 function viewVoucher(pvNumber, voucherType) {
-    console.log('Viewing voucher:', pvNumber, voucherType);
+    console.log('[PV] viewVoucher called:', pvNumber, voucherType);
     closeDropdownPortal();
     showLoading();
     
-    API.getVoucherByNumber(pvNumber, voucherType, { showLoading: false })
+    window.API.getVoucherByNumber(pvNumber, voucherType, { showLoading: false })
         .then(function(voucherData) {
+            console.log('[PV] viewVoucher response:', voucherData);
             hideModal();
             if (!voucherData || !voucherData.pvNumber) {
                 alert('No voucher data found for PV Number: ' + pvNumber);
@@ -324,13 +356,14 @@ function viewVoucher(pvNumber, voucherType) {
             showVoucherPreview(voucherData);
         })
         .catch(function(error) {
+            console.error('[PV] viewVoucher error:', error);
             hideModal();
             alert('Error loading voucher: ' + (error.message || error));
         });
 }
 
 function editVoucher(pvNumber, voucherType) {
-    console.log('Editing voucher:', pvNumber, voucherType);
+    console.log('[PV] editVoucher called:', pvNumber, voucherType);
     closeDropdownPortal();
     showLoading();
     
@@ -339,8 +372,9 @@ function editVoucher(pvNumber, voucherType) {
     var pvDisplay = document.getElementById('pvNumberDisplay');
     if (pvDisplay) pvDisplay.textContent = pvNumber;
     
-    API.getVoucherByNumber(pvNumber, voucherType, { showLoading: false })
+    window.API.getVoucherByNumber(pvNumber, voucherType, { showLoading: false })
         .then(function(voucherData) {
+            console.log('[PV] editVoucher response:', voucherData);
             if (!voucherData || !voucherData.pvNumber) {
                 hideModal();
                 alert('No voucher data found for PV Number: ' + pvNumber);
@@ -351,12 +385,15 @@ function editVoucher(pvNumber, voucherType) {
             hideModal();
         })
         .catch(function(error) {
+            console.error('[PV] editVoucher error:', error);
             hideModal();
             alert('Error loading voucher for editing: ' + (error.message || error));
         });
 }
 
 function populateFormForEditing(voucherData) {
+    console.log('[PV] populateFormForEditing called with:', voucherData);
+    
     var pvContainer = document.getElementById('pvNumber-container');
     var dateContainer = document.getElementById('date-container');
     if (pvContainer) pvContainer.style.display = 'flex';
@@ -425,8 +462,9 @@ function populateFormForEditing(voucherData) {
 }
 
 function submitForm() {
-    console.log('Submitting form...');
+    console.log('[PV] submitForm called');
     showLoading();
+    
     const formObject = {
         voucherType: document.getElementById('voucherType').value,
         pvNumber: document.getElementById('pvNumber').value,
@@ -450,22 +488,23 @@ function submitForm() {
     formObject.amountInWords = convertNumberToWords(formObject.amount);
     lastSubmittedVoucherData = formObject;
     
-    console.log('Form object:', formObject);
+    console.log('[PV] Form object:', formObject);
     
-    API.processForm(formObject)
+    window.API.processForm(formObject)
         .then(function(response) {
-            console.log('Form submitted successfully:', response);
+            console.log('[PV] processForm response:', response);
             showSuccess(); 
         })
         .catch(function(error) {
-            console.error('Form submission error:', error);
+            console.error('[PV] processForm error:', error);
             showError(error); 
         });
 }
 
 function updateForm() {
-    console.log('Updating form...');
+    console.log('[PV] updateForm called');
     showLoading();
+    
     const formObject = {
         pvNumber: document.getElementById('pvNumber').value,
         voucherType: document.getElementById('voucherType').value,
@@ -489,16 +528,16 @@ function updateForm() {
     formObject.amountInWords = convertNumberToWords(formObject.amount);
     lastSubmittedVoucherData = formObject;
     
-    console.log('Update object:', formObject);
+    console.log('[PV] Update object:', formObject);
     
-    API.updateVoucher(formObject)
+    window.API.updateVoucher(formObject)
         .then(function(response) {
-            console.log('Form updated successfully:', response);
+            console.log('[PV] updateVoucher response:', response);
             showSuccess('updated');
             fetchPVTable();
         })
         .catch(function(error) {
-            console.error('Form update error:', error);
+            console.error('[PV] updateVoucher error:', error);
             showError(error);
         });
 }
@@ -527,6 +566,8 @@ function resetFormAfterUpdate() {
 // ============================================
 
 function showVoucherPreview(voucherData) {
+    console.log('[PV] showVoucherPreview called with:', voucherData);
+    
     if (!voucherData || typeof voucherData !== 'object') {
         console.error('Invalid voucher data received:', voucherData);
         alert('Error: Invalid voucher data. Please try again.');
@@ -739,3 +780,5 @@ window.printVoucher = printVoucher;
 window.closeVoucherModal = closeVoucherModal;
 window.hideModal = hideModal;
 window.resetFormAfterUpdate = resetFormAfterUpdate;
+
+console.log('[PV] pv.js loaded and ready');
