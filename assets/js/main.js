@@ -1,6 +1,22 @@
-/* ============================================
-   ACCOUNTS WORKSPACE - MAIN JAVASCRIPT
-   ============================================ */
+
+
+window.Utils = {
+  showLoading: function(show) {
+    if (show) {
+      const overlay = document.getElementById('loadingOverlay');
+      if (overlay) {
+        overlay.style.display = 'flex';
+      }
+    } else {
+      const overlay = document.getElementById('loadingOverlay');
+      if (overlay) {
+        overlay.style.display = 'none';
+      }
+    }
+  }
+};
+
+
 
 // Global Variables
 let currentUser = null;
