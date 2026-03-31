@@ -8,6 +8,7 @@ class ApiService {
 
   // Generic request method (JSONP)
   async request(action, data = {}, options = {}) {
+    // showLoading defaults to true, but can be overridden
     const showLoading = options.showLoading !== false;
     try {
       if (showLoading && window.Utils && window.Utils.showLoading) {
@@ -79,15 +80,18 @@ class ApiService {
   // ============================================
   
   async getNextPVNumber(voucherType, options = {}) {
-    return this.request('getNextPVNumber', { voucherType }, options);
+    // Suppress loading for background fetches
+    return this.request('getNextPVNumber', { voucherType }, { showLoading: false, ...options });
   }
   
   async getPVNumbersByType(options = {}) {
-    return this.request('getPVNumbersByType', {}, options);
+    // Suppress loading for background fetches
+    return this.request('getPVNumbersByType', {}, { showLoading: false, ...options });
   }
   
   async getVoucherByNumber(pvNumber, voucherType, options = {}) {
-    return this.request('getVoucherByNumber', { pvNumber, voucherType }, options);
+    // Suppress loading for background fetches (let caller control it)
+    return this.request('getVoucherByNumber', { pvNumber, voucherType }, { showLoading: false, ...options });
   }
   
   async processForm(formData, options = {}) {
