@@ -8,8 +8,9 @@ class ApiService {
 
   // Generic request method (JSONP)
   async request(action, data = {}, options = {}) {
-    // showLoading defaults to true, but can be overridden
     const showLoading = options.showLoading !== false;
+    console.log(`[API] Requesting: ${action}`, data, options);
+    
     try {
       if (showLoading && window.Utils && window.Utils.showLoading) {
         window.Utils.showLoading(true);
@@ -24,7 +25,11 @@ class ApiService {
         url.searchParams.append('data', JSON.stringify(data));
         url.searchParams.append('callback', callbackName);
         
+        console.log(`[API] URL: ${url.toString()}`);
+        
         window[callbackName] = (response) => {
+          console.log(`[API] Response for ${action}:`, response);
+          
           // Cleanup
           if (script.parentNode) document.head.removeChild(script);
           delete window[callbackName];
@@ -33,7 +38,7 @@ class ApiService {
             window.Utils.showLoading(false);
           }
           
-          if (response && response.success !== false) {
+          if (response && response.success !== false && !response.error) {
             const cacheKey = `${action}_${JSON.stringify(data)}`;
             this.cache.set(cacheKey, response);
             resolve(response);
@@ -44,6 +49,7 @@ class ApiService {
         
         script.src = url.toString();
         script.onerror = () => {
+          console.error(`[API] Script error for ${action}`);
           if (script.parentNode) document.head.removeChild(script);
           delete window[callbackName];
           if (showLoading && window.Utils && window.Utils.showLoading) {
@@ -53,10 +59,12 @@ class ApiService {
         };
         
         document.head.appendChild(script);
+        console.log(`[API] Script tag added for ${action}`);
         
         // Timeout after 30 seconds
         setTimeout(() => {
           if (script.parentNode) {
+            console.error(`[API] Timeout for ${action}`);
             document.head.removeChild(script);
             delete window[callbackName];
             if (showLoading && window.Utils && window.Utils.showLoading) {
@@ -68,6 +76,7 @@ class ApiService {
       });
       
     } catch (error) {
+      console.error(`[API] Exception in request:`, error);
       if (showLoading && window.Utils && window.Utils.showLoading) {
         window.Utils.showLoading(false);
       }
@@ -80,26 +89,28 @@ class ApiService {
   // ============================================
   
   async getNextPVNumber(voucherType, options = {}) {
-    // Suppress loading for background fetches
+    console.log('[API] getNextPVNumber called with:', voucherType);
     return this.request('getNextPVNumber', { voucherType }, { showLoading: false, ...options });
   }
   
   async getPVNumbersByType(options = {}) {
-    // Suppress loading for background fetches
+    console.log('[API] getPVNumbersByType called');
     return this.request('getPVNumbersByType', {}, { showLoading: false, ...options });
   }
   
   async getVoucherByNumber(pvNumber, voucherType, options = {}) {
-    // Suppress loading for background fetches (let caller control it)
+    console.log('[API] getVoucherByNumber called with:', pvNumber, voucherType);
     return this.request('getVoucherByNumber', { pvNumber, voucherType }, { showLoading: false, ...options });
   }
   
   async processForm(formData, options = {}) {
-    return this.request('processForm', formData, options);
+    console.log('[API] processForm called with:', formData);
+    return this.request('processForm', { formData: JSON.stringify(formData) }, options);
   }
   
   async updateVoucher(formData, options = {}) {
-    return this.request('updateVoucher', formData, options);
+    console.log('[API] updateVoucher called with:', formData);
+    return this.request('updateVoucher', { formData: JSON.stringify(formData) }, options);
   }
 
   // ============================================
@@ -107,6 +118,7 @@ class ApiService {
   // ============================================
   
   async getUserInfo(options = {}) {
+    console.log('[API] getUserInfo called');
     return this.request('getUserInfo', {}, options);
   }
 
@@ -222,6 +234,7 @@ class ApiService {
 
 // Create global API instance
 window.API = new ApiService();
+console.log('[API] ApiService initialized');
 
 // For backward compatibility
 window.callGAS = async function(action, data = {}) {
