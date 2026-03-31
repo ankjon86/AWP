@@ -1,3 +1,4 @@
+ url=https://github.com/gapmobilebanker-starFile/assets/js/pv.js
 /* ============================================
    PAYMENT VOUCHER MODULE JAVASCRIPT - FIXED
    ============================================ */
@@ -12,13 +13,18 @@ let nextPvNumber = null;
 // ============================================
 
 function initPVModule() {
+    console.log('Initializing PV Module...');
+    
     const today = new Date().toISOString().split('T')[0];
     const dateField = document.getElementById('date');
     if (dateField) dateField.value = today;
     
     updateVoucherTypeFields();
     fetchPVTable();
-    
+    setupPVEventListeners();
+}
+
+function setupPVEventListeners() {
     // Close dropdown when clicking outside
     document.addEventListener('click', function(event) {
         if (window.__pvPortalOpen) {
@@ -46,11 +52,16 @@ function initPVModule() {
 // ============================================
 
 function updateVoucherTypeFields() {
-    var voucherType = document.getElementById('voucherType').value;
+    var voucherType = document.getElementById('voucherType');
+    if (!voucherType) return;
+    
     var bankField = document.getElementById('bankField');
     var chequeNumberField = document.getElementById('chequeNumberField');
     
-    if (voucherType === 'Cheque Payment Voucher') {
+    var selectedType = voucherType.value;
+    console.log('Updating voucher type fields for:', selectedType);
+    
+    if (selectedType === 'Cheque Payment Voucher') {
         if (bankField) bankField.style.display = 'flex';
         if (chequeNumberField) chequeNumberField.style.display = 'flex';
     } else {
@@ -62,7 +73,7 @@ function updateVoucherTypeFields() {
         if (chequeInput) chequeInput.value = '';
     }
     
-    fetchNextPVNumber(voucherType);
+    fetchNextPVNumber(selectedType);
 }
 
 function toggleWithholdingTax() {
@@ -155,28 +166,45 @@ function clearFormExceptPVDateType() {
 // ============================================
 
 function fetchNextPVNumber(voucherType) {
-    // Suppress loading for background data fetch
+    console.log('Fetching next PV number for:', voucherType);
+    
+    if (!window.API) {
+        console.error('API not initialized');
+        const fallbackNumber = generateFallbackPVNumber(voucherType);
+        updatePVNumberDisplay(fallbackNumber);
+        return;
+    }
+
     API.getNextPVNumber(voucherType, { showLoading: false })
         .then(function(pvNumber) {
+            console.log('Received PV number:', pvNumber);
             nextPvNumber = pvNumber;
             if (!currentlyEditingPvNumber) {
-                var pvField = document.getElementById('pvNumber');
-                var pvDisplay = document.getElementById('pvNumberDisplay');
-                if (pvField) pvField.value = pvNumber;
-                if (pvDisplay) pvDisplay.textContent = pvNumber;
+                updatePVNumberDisplay(pvNumber);
             }
         })
         .catch(function(error) {
             console.error('Error fetching next PV number:', error);
             // Generate a fallback PV number if API fails
             const fallbackNumber = generateFallbackPVNumber(voucherType);
+            console.log('Using fallback PV number:', fallbackNumber);
             if (!currentlyEditingPvNumber) {
-                var pvField = document.getElementById('pvNumber');
-                var pvDisplay = document.getElementById('pvNumberDisplay');
-                if (pvField) pvField.value = fallbackNumber;
-                if (pvDisplay) pvDisplay.textContent = fallbackNumber;
+                updatePVNumberDisplay(fallbackNumber);
             }
         });
+}
+
+function updatePVNumberDisplay(pvNumber) {
+    var pvField = document.getElementById('pvNumber');
+    var pvDisplay = document.getElementById('pvNumberDisplay');
+    if (pvField) {
+        pvField.value = pvNumber;
+        console.log('Updated pvNumber field to:', pvNumber);
+    }
+    if (pvDisplay) {
+        pvDisplay.textContent = pvNumber;
+        console.log('Updated pvNumberDisplay to:', pvNumber);
+    }
 }
 
 // Generate fallback PV number if API fails
@@ -186,15 +214,24 @@ function generateFallbackPVNumber(voucherType) {
         'Cash Payment Voucher': 'PVNO.CH',
         'Cheque Payment Voucher': 'PVNO.CQ'
     };
-    const prefix = prefixes[voucherType] || 'PVNO';
+    const prefix = prefixes[voucherType] || 'PVNO.FT';
     const timestamp = Date.now().toString().slice(-5);
-    return prefix + timestamp.padStart(5, '0');
+    const fallback = prefix + String(timestamp).padStart(5, '0');
+    console.log('Generated fallback PV number:', fallback);
+    return fallback;
 }
 
 function fetchPVTable() {
-    // Suppress loading for background data fetch
+    console.log('Fetching PV table...');
+    
+    if (!window.API) {
+        console.error('API not initialized');
+        return;
+    }
+
     API.getPVNumbersByType({ showLoading: false })
         .then(function(data) {
+            console.log('Received PV table data:', data);
             renderPVList('cash-payment-list', data['Cash Payment Voucher']);
             renderPVList('cheque-list', data['Cheque Payment Voucher']);
             renderPVList('payment-list', data['Payment Voucher']);
@@ -273,8 +310,10 @@ function closeDropdownPortal() {
 // ============================================
 
 function viewVoucher(pvNumber, voucherType) {
+    console.log('Viewing voucher:', pvNumber, voucherType);
     closeDropdownPortal();
     showLoading();
+    
     API.getVoucherByNumber(pvNumber, voucherType, { showLoading: false })
         .then(function(voucherData) {
             hideModal();
@@ -291,6 +330,7 @@ function viewVoucher(pvNumber, voucherType) {
 }
 
 function editVoucher(pvNumber, voucherType) {
+    console.log('Editing voucher:', pvNumber, voucherType);
     closeDropdownPortal();
     showLoading();
     
@@ -385,6 +425,7 @@ function populateFormForEditing(voucherData) {
 }
 
 function submitForm() {
+    console.log('Submitting form...');
     showLoading();
     const formObject = {
         voucherType: document.getElementById('voucherType').value,
@@ -409,16 +450,21 @@ function submitForm() {
     formObject.amountInWords = convertNumberToWords(formObject.amount);
     lastSubmittedVoucherData = formObject;
     
+    console.log('Form object:', formObject);
+    
     API.processForm(formObject)
-        .then(function() { 
+        .then(function(response) {
+            console.log('Form submitted successfully:', response);
             showSuccess(); 
         })
-        .catch(function(error) { 
+        .catch(function(error) {
+            console.error('Form submission error:', error);
             showError(error); 
         });
 }
 
 function updateForm() {
+    console.log('Updating form...');
     showLoading();
     const formObject = {
         pvNumber: document.getElementById('pvNumber').value,
@@ -443,12 +489,16 @@ function updateForm() {
     formObject.amountInWords = convertNumberToWords(formObject.amount);
     lastSubmittedVoucherData = formObject;
     
+    console.log('Update object:', formObject);
+    
     API.updateVoucher(formObject)
-        .then(function() {
+        .then(function(response) {
+            console.log('Form updated successfully:', response);
             showSuccess('updated');
             fetchPVTable();
         })
         .catch(function(error) {
+            console.error('Form update error:', error);
             showError(error);
         });
 }
@@ -670,35 +720,6 @@ function convertNumberToWords(amount) {
     }
     return (cedisStr + pesewasStr).trim();
 }
-
-// ============================================
-// EVENT LISTENERS
-// ============================================
-
-window.addEventListener('click', function(event) {
-    var voucherModal = document.getElementById('voucher-preview-modal');
-    var loadingModal = document.getElementById('loading-modal');
-    
-    if (event.target === voucherModal) {
-        closeVoucherModal();
-    }
-    if (event.target === loadingModal) {
-        hideModal();
-    }
-    if (window.__pvPortalOpen) {
-        const portal = document.getElementById('pv-dropdown-portal');
-        if (portal && !portal.contains(event.target) && !event.target.classList.contains('pv-btn')) {
-            closeDropdownPortal();
-        }
-    }
-});
-
-document.addEventListener('click', function(event) {
-    var portal = document.getElementById('pv-dropdown-portal');
-    if (portal && portal.contains(event.target)) {
-        event.stopPropagation();
-    }
-});
 
 // ============================================
 // EXPORT FUNCTIONS FOR GLOBAL USE
