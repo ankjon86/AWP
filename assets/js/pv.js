@@ -80,33 +80,45 @@ function toggleWithholdingTax() {
 }
 
 // ============================================
-// API CALLS
+// API CALLS - DIRECT WITH JSONP (NO LOADING OVERLAY)
 // ============================================
 
 function fetchNextPVNumber(voucherType) {
     if (!window.API) {
         console.error('API not available');
-        showError('API service not initialized. Please refresh the page.');
+        // Generate a temporary PV number as fallback
+        const tempNumber = generateTempPVNumber(voucherType);
+        nextPvNumber = tempNumber;
+        const pvField = document.getElementById('pvNumber');
+        const pvDisplay = document.getElementById('pvNumberDisplay');
+        if (pvField) pvField.value = tempNumber;
+        if (pvDisplay) pvDisplay.textContent = tempNumber;
         return;
     }
     
     console.log('Fetching next PV number for type:', voucherType);
     
-    API.getNextPVNumber(voucherType)
+    // Call API without loading overlay
+    API.getNextPVNumber(voucherType, { showLoading: false })
         .then(response => {
             console.log('PV Number response:', response);
-            // Handle different response formats
+            
             let pvNumber = null;
+            
+            // Handle different response formats
             if (typeof response === 'string') {
                 pvNumber = response;
             } else if (response && response.pvNumber) {
                 pvNumber = response.pvNumber;
-            } else if (response && typeof response === 'object' && !response.error) {
-                // Try to get the first value from the response
-                pvNumber = Object.values(response)[0] || response;
+            } else if (response && typeof response === 'object') {
+                // Try to extract PV number from object
+                pvNumber = response.data || response.result || response;
+                if (typeof pvNumber === 'object') {
+                    pvNumber = Object.values(pvNumber)[0];
+                }
             }
             
-            if (pvNumber) {
+            if (pvNumber && typeof pvNumber === 'string' && pvNumber.startsWith('PVNO')) {
                 nextPvNumber = pvNumber;
                 if (!currentlyEditingPvNumber) {
                     const pvField = document.getElementById('pvNumber');
@@ -114,18 +126,38 @@ function fetchNextPVNumber(voucherType) {
                     if (pvField) pvField.value = pvNumber;
                     if (pvDisplay) pvDisplay.textContent = pvNumber;
                 }
-            } else if (response && response.error) {
-                console.error('Error fetching PV number:', response.error);
-                showError('Failed to get PV number: ' + response.error);
             } else {
-                console.error('Unexpected response format:', response);
-                showError('Failed to get PV number. Please try again.');
+                console.warn('Invalid PV number format, using fallback');
+                const fallbackNumber = generateTempPVNumber(voucherType);
+                nextPvNumber = fallbackNumber;
+                const pvField = document.getElementById('pvNumber');
+                const pvDisplay = document.getElementById('pvNumberDisplay');
+                if (pvField) pvField.value = fallbackNumber;
+                if (pvDisplay) pvDisplay.textContent = fallbackNumber;
             }
         })
         .catch(error => {
             console.error('Error fetching next PV number:', error);
-            showError('Failed to get PV number: ' + error.message);
+            // Generate fallback PV number on error
+            const fallbackNumber = generateTempPVNumber(voucherType);
+            nextPvNumber = fallbackNumber;
+            const pvField = document.getElementById('pvNumber');
+            const pvDisplay = document.getElementById('pvNumberDisplay');
+            if (pvField) pvField.value = fallbackNumber;
+            if (pvDisplay) pvDisplay.textContent = fallbackNumber;
         });
+}
+
+// Generate a temporary PV number if API fails
+function generateTempPVNumber(voucherType) {
+    const prefixes = {
+        'Payment Voucher': 'PVNO.FT',
+        'Cash Payment Voucher': 'PVNO.CH',
+        'Cheque Payment Voucher': 'PVNO.CQ'
+    };
+    const prefix = prefixes[voucherType] || 'PVNO';
+    const timestamp = Date.now().toString().slice(-5);
+    return prefix + timestamp.padStart(5, '0');
 }
 
 function fetchPVTable() {
@@ -134,7 +166,7 @@ function fetchPVTable() {
         return;
     }
     
-    API.getPVNumbersByType()
+    API.getPVNumbersByType({ showLoading: false })
         .then(response => {
             if (response && !response.error) {
                 renderPVList('cash-payment-list', response['Cash Payment Voucher']);
@@ -228,45 +260,41 @@ function closeDropdownPortal() {
 
 function viewVoucher(pvNumber, voucherType) {
     closeDropdownPortal();
-    showLoading('Loading voucher...');
     
-    API.getVoucherByNumber(pvNumber, voucherType)
+    API.getVoucherByNumber(pvNumber, voucherType, { showLoading: false })
         .then(response => {
-            hideLoading();
             if (response && !response.error && response.pvNumber) {
                 showVoucherPreview(response);
             } else {
-                showError('No voucher data found for PV Number: ' + pvNumber);
+                alert('No voucher data found for PV Number: ' + pvNumber);
             }
         })
         .catch(error => {
-            hideLoading();
-            showError('Error loading voucher: ' + (error.message || error));
+            console.error('Error loading voucher:', error);
+            alert('Error loading voucher: ' + (error.message || error));
         });
 }
 
 function editVoucher(pvNumber, voucherType) {
     closeDropdownPortal();
-    showLoading('Loading voucher for editing...');
     
     currentlyEditingPvNumber = pvNumber;
     
     const pvDisplay = document.getElementById('pvNumberDisplay');
     if (pvDisplay) pvDisplay.textContent = pvNumber;
     
-    API.getVoucherByNumber(pvNumber, voucherType)
+    API.getVoucherByNumber(pvNumber, voucherType, { showLoading: false })
         .then(response => {
-            hideLoading();
             if (response && !response.error && response.pvNumber) {
                 populateFormForEditing(response);
                 fetchNextPVNumber(response.voucherType);
             } else {
-                showError('No voucher data found for PV Number: ' + pvNumber);
+                alert('No voucher data found for PV Number: ' + pvNumber);
             }
         })
         .catch(error => {
-            hideLoading();
-            showError('Error loading voucher for editing: ' + (error.message || error));
+            console.error('Error loading voucher:', error);
+            alert('Error loading voucher for editing: ' + (error.message || error));
         });
 }
 
@@ -324,8 +352,6 @@ function populateFormForEditing(voucherData) {
 }
 
 function submitForm() {
-    showLoading('Processing voucher...');
-    
     const formObject = {
         voucherType: document.getElementById('voucherType').value,
         pvNumber: document.getElementById('pvNumber').value,
@@ -350,11 +376,10 @@ function submitForm() {
     formObject.amountInWords = convertNumberToWords(formObject.amount);
     lastSubmittedVoucherData = formObject;
     
-    API.processForm(formObject)
+    API.processForm(formObject, { showLoading: false })
         .then(response => {
-            hideLoading();
             if (response && !response.error) {
-                showSuccessMessage('Voucher created successfully!');
+                alert('Voucher created successfully!');
                 setTimeout(() => {
                     const voucherType = document.getElementById('voucherType');
                     if (voucherType) fetchNextPVNumber(voucherType.value);
@@ -362,18 +387,16 @@ function submitForm() {
                     fetchPVTable();
                 }, 500);
             } else {
-                showError('Error creating voucher: ' + (response?.error || 'Unknown error'));
+                alert('Error creating voucher: ' + (response?.error || 'Unknown error'));
             }
         })
         .catch(error => {
-            hideLoading();
-            showError('Error creating voucher: ' + (error.message || error));
+            console.error('Error:', error);
+            alert('Error creating voucher: ' + (error.message || error));
         });
 }
 
 function updateForm() {
-    showLoading('Updating voucher...');
-    
     const formObject = {
         pvNumber: document.getElementById('pvNumber').value,
         voucherType: document.getElementById('voucherType').value,
@@ -398,20 +421,19 @@ function updateForm() {
     formObject.amountInWords = convertNumberToWords(formObject.amount);
     lastSubmittedVoucherData = formObject;
     
-    API.updateVoucher(formObject)
+    API.updateVoucher(formObject, { showLoading: false })
         .then(response => {
-            hideLoading();
             if (response && !response.error) {
-                showSuccessMessage('Voucher updated successfully!');
+                alert('Voucher updated successfully!');
                 fetchPVTable();
                 resetFormAfterUpdate();
             } else {
-                showError('Error updating voucher: ' + (response?.error || 'Unknown error'));
+                alert('Error updating voucher: ' + (response?.error || 'Unknown error'));
             }
         })
         .catch(error => {
-            hideLoading();
-            showError('Error updating voucher: ' + (error.message || error));
+            console.error('Error:', error);
+            alert('Error updating voucher: ' + (error.message || error));
         });
 }
 
@@ -465,7 +487,7 @@ function clearFormExceptPVDateType() {
 
 function showVoucherPreview(voucherData) {
     if (!voucherData || typeof voucherData !== 'object') {
-        showError('Invalid voucher data received');
+        alert('Invalid voucher data received');
         return;
     }
     
@@ -562,10 +584,9 @@ function closeVoucherModal() {
 
 function previewVoucherFromLast() {
     if (!lastSubmittedVoucherData) {
-        showError('No voucher data to preview');
+        alert('No voucher data to preview');
         return;
     }
-    hideModal();
     showVoucherPreview(lastSubmittedVoucherData);
 }
 
@@ -670,43 +691,6 @@ function hideModal() {
     const modal = document.getElementById('loading-modal');
     if (modal) modal.style.display = 'none';
 }
-
-function showSuccessMessage(message) {
-    showModal(`
-        <div class="success-message">${message}</div>
-        <br>
-        <button class="download-button" onclick="previewVoucherFromLast()">View & Print</button>
-        <br>
-        <button class="modal-close-button" onclick="hideModal(); resetFormAfterUpdate();">Close</button>
-    `);
-}
-
-function showErrorMessage(message) {
-    showModal(`
-        <div class="modal-error-message">Error: ${message}</div>
-        <button class="modal-close-button" onclick="hideModal()">Close</button>
-    `);
-}
-
-// Override global showError to use PV-specific modal
-const originalShowError = window.showError;
-window.showError = function(message) {
-    if (document.getElementById('pvForm')) {
-        showErrorMessage(message);
-    } else if (originalShowError) {
-        originalShowError(message);
-    }
-};
-
-// Override global showSuccess to use PV-specific modal
-const originalShowSuccess = window.showSuccess;
-window.showSuccess = function(message) {
-    if (document.getElementById('pvForm')) {
-        showSuccessMessage(message);
-    } else if (originalShowSuccess) {
-        originalShowSuccess(message);
-    }
-};
 
 // Export functions for global use
 window.initPVModule = initPVModule;
