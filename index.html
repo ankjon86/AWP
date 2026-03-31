@@ -49,19 +49,14 @@
     <!-- Sidebar Navigation -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-menu">
-        <!-- Dashboard -->
         <div class="menu-item" onclick="loadModule('dashboard')">
           <i class="fas fa-tachometer-alt"></i>
           <span>Dashboard</span>
         </div>
-
-        <!-- Payment Voucher -->
         <div class="menu-item" onclick="loadModule('paymentVoucher')">
           <i class="fas fa-file-invoice-dollar"></i>
           <span>Payment Voucher</span>
         </div>
-
-        <!-- Inventory Management Dropdown -->
         <div class="menu-item has-dropdown" onclick="toggleSubmenu('inventorySubmenu')">
           <i class="fas fa-boxes"></i>
           <span>Inventory Mgt</span>
@@ -75,8 +70,6 @@
             <i class="fas fa-chart-bar"></i> View Inventory Report
           </div>
         </div>
-
-        <!-- Fixed Asset Dropdown -->
         <div class="menu-item has-dropdown" onclick="toggleSubmenu('assetSubmenu')">
           <i class="fas fa-building"></i>
           <span>Fixed Asset</span>
@@ -90,8 +83,6 @@
             <i class="fas fa-list"></i> View Asset Register
           </div>
         </div>
-
-        <!-- Investment Management Dropdown -->
         <div class="menu-item has-dropdown" onclick="toggleSubmenu('investmentSubmenu')">
           <i class="fas fa-chart-line"></i>
           <span>Investment Mgt</span>
@@ -110,9 +101,7 @@
 
     <!-- Main Content Area -->
     <main class="main-content" id="mainContent">
-      <div class="content-wrapper">
-        <!-- Dashboard will be loaded here by default -->
-      </div>
+      <div class="content-wrapper"></div>
     </main>
   </div>
 
@@ -125,10 +114,10 @@
   <!-- Global Toast Container -->
   <div id="global-toast" style="display: none;"></div>
 
-  <!-- Configuration - UPDATE THIS WITH YOUR URL -->
+  <!-- Configuration -->
   <script src="config.js"></script>
   
-  <!-- API Module (loads first) -->
+  <!-- API Service -->
   <script src="assets/js/api.js"></script>
   
   <!-- Core Scripts -->
