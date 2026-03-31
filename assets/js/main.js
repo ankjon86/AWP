@@ -1,5 +1,3 @@
-
-
 window.Utils = {
   showLoading: function(show) {
     if (show) {
@@ -15,8 +13,6 @@ window.Utils = {
     }
   }
 };
-
-
 
 // Global Variables
 let currentUser = null;
@@ -400,6 +396,7 @@ async function loadModule(moduleName) {
             if (window[config.init] && typeof window[config.init] === 'function') {
                 try {
                     window[config.init]();
+                    console.log(`${moduleName} module initialized successfully`);
                 } catch (err) {
                     console.error(`Error initializing ${moduleName}:`, err);
                 }
@@ -533,8 +530,11 @@ function initDashboard() {
 // ============================================
 
 function initPVModule() {
-    console.log('Payment Voucher module loaded');
-    // Will be overridden by pv.js
+    console.log('Payment Voucher module loaded - calling initPVModule');
+    // Will be overridden by pv.js after it loads
+    if (window.initPVModule && typeof window.initPVModule === 'function') {
+        // Call the real initPVModule from pv.js
+    }
 }
 
 function initInventoryModule() {
@@ -590,7 +590,7 @@ function logout() {
 }
 
 // ============================================
-// EXPORT FOR MODULES
+// EXPORT FOR MODULES - CRITICAL FOR PV MODULE
 // ============================================
 
 // Make functions available globally
