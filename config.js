@@ -3,10 +3,10 @@
    ============================================ */
 
 window.APP_CONFIG = {
-  // REPLACE THIS WITH YOUR ACTUAL DEPLOYMENT URL
+  // Replace with your actual Google Apps Script Web App URL
   API_URL: 'https://script.google.com/macros/s/AKfycbwhrAckDK-eLguLKM5WcV9HtUuE6D8I-Q2g-lckarcpSPfigqKsKAfVqIRMU1ppcBCkIQ/exec',
   
-  // Google Sheet IDs
+  // Google Sheet IDs (keep these as they are)
   SHEETS: {
     PV: '1vb3sUPMXWi455HVG6PbeWiWGLt-ek9DbwrY7Bw_yuKw',
     INVENTORY: '1tgE_a9Bv5uuBSDcRYqtfifxHTAXhTILxHDI22z4C1TA',
