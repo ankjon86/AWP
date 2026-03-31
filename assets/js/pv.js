@@ -1,5 +1,5 @@
 /* ============================================
-   PAYMENT VOUCHER MODULE JAVASCRIPT
+   PAYMENT VOUCHER MODULE JAVASCRIPT - FIXED
    ============================================ */
 
 // Global variables for PV module
@@ -151,12 +151,13 @@ function clearFormExceptPVDateType() {
 }
 
 // ============================================
-// API CALLS - NO LOADING ON FETCH
+// API CALLS - WITH LOADING CONTROL
 // ============================================
 
 function fetchNextPVNumber(voucherType) {
-    google.script.run
-        .withSuccessHandler(function(pvNumber) {
+    // Suppress loading for background data fetch
+    API.getNextPVNumber(voucherType, { showLoading: false })
+        .then(function(pvNumber) {
             nextPvNumber = pvNumber;
             if (!currentlyEditingPvNumber) {
                 var pvField = document.getElementById('pvNumber');
@@ -165,7 +166,7 @@ function fetchNextPVNumber(voucherType) {
                 if (pvDisplay) pvDisplay.textContent = pvNumber;
             }
         })
-        .withFailureHandler(function(error) {
+        .catch(function(error) {
             console.error('Error fetching next PV number:', error);
             // Generate a fallback PV number if API fails
             const fallbackNumber = generateFallbackPVNumber(voucherType);
@@ -175,8 +176,7 @@ function fetchNextPVNumber(voucherType) {
                 if (pvField) pvField.value = fallbackNumber;
                 if (pvDisplay) pvDisplay.textContent = fallbackNumber;
             }
-        })
-        .getNextPVNumber(voucherType);
+        });
 }
 
 // Generate fallback PV number if API fails
@@ -192,16 +192,16 @@ function generateFallbackPVNumber(voucherType) {
 }
 
 function fetchPVTable() {
-    google.script.run
-        .withSuccessHandler(function(data) {
+    // Suppress loading for background data fetch
+    API.getPVNumbersByType({ showLoading: false })
+        .then(function(data) {
             renderPVList('cash-payment-list', data['Cash Payment Voucher']);
             renderPVList('cheque-list', data['Cheque Payment Voucher']);
             renderPVList('payment-list', data['Payment Voucher']);
         })
-        .withFailureHandler(function(error) {
+        .catch(function(error) {
             console.error('Error fetching PV table:', error);
-        })
-        .getPVNumbersByType();
+        });
 }
 
 // ============================================
@@ -275,8 +275,8 @@ function closeDropdownPortal() {
 function viewVoucher(pvNumber, voucherType) {
     closeDropdownPortal();
     showLoading();
-    google.script.run
-        .withSuccessHandler(function(voucherData) {
+    API.getVoucherByNumber(pvNumber, voucherType, { showLoading: false })
+        .then(function(voucherData) {
             hideModal();
             if (!voucherData || !voucherData.pvNumber) {
                 alert('No voucher data found for PV Number: ' + pvNumber);
@@ -284,11 +284,10 @@ function viewVoucher(pvNumber, voucherType) {
             }
             showVoucherPreview(voucherData);
         })
-        .withFailureHandler(function(error) {
+        .catch(function(error) {
             hideModal();
             alert('Error loading voucher: ' + (error.message || error));
-        })
-        .getVoucherByNumber(pvNumber, voucherType);
+        });
 }
 
 function editVoucher(pvNumber, voucherType) {
@@ -300,8 +299,8 @@ function editVoucher(pvNumber, voucherType) {
     var pvDisplay = document.getElementById('pvNumberDisplay');
     if (pvDisplay) pvDisplay.textContent = pvNumber;
     
-    google.script.run
-        .withSuccessHandler(function(voucherData) {
+    API.getVoucherByNumber(pvNumber, voucherType, { showLoading: false })
+        .then(function(voucherData) {
             if (!voucherData || !voucherData.pvNumber) {
                 hideModal();
                 alert('No voucher data found for PV Number: ' + pvNumber);
@@ -311,11 +310,10 @@ function editVoucher(pvNumber, voucherType) {
             fetchNextPVNumber(voucherData.voucherType);
             hideModal();
         })
-        .withFailureHandler(function(error) {
+        .catch(function(error) {
             hideModal();
             alert('Error loading voucher for editing: ' + (error.message || error));
-        })
-        .getVoucherByNumber(pvNumber, voucherType);
+        });
 }
 
 function populateFormForEditing(voucherData) {
@@ -410,14 +408,14 @@ function submitForm() {
     };
     formObject.amountInWords = convertNumberToWords(formObject.amount);
     lastSubmittedVoucherData = formObject;
-    google.script.run
-        .withSuccessHandler(function() { 
+    
+    API.processForm(formObject)
+        .then(function() { 
             showSuccess(); 
         })
-        .withFailureHandler(function(error) { 
+        .catch(function(error) { 
             showError(error); 
-        })
-        .processForm(formObject);
+        });
 }
 
 function updateForm() {
@@ -445,15 +443,14 @@ function updateForm() {
     formObject.amountInWords = convertNumberToWords(formObject.amount);
     lastSubmittedVoucherData = formObject;
     
-    google.script.run
-        .withSuccessHandler(function() {
+    API.updateVoucher(formObject)
+        .then(function() {
             showSuccess('updated');
             fetchPVTable();
         })
-        .withFailureHandler(function(error) {
+        .catch(function(error) {
             showError(error);
-        })
-        .updateVoucher(formObject);
+        });
 }
 
 function resetFormAfterUpdate() {
@@ -674,16 +671,10 @@ function convertNumberToWords(amount) {
     return (cedisStr + pesewasStr).trim();
 }
 
-// Initialize PV Module
-function initPVModule() {
-    const today = new Date().toISOString().split('T')[0];
-    var dateField = document.getElementById('date');
-    if (dateField) dateField.value = today;
-    updateVoucherTypeFields();
-    fetchPVTable();
-}
+// ============================================
+// EVENT LISTENERS
+// ============================================
 
-// Event Listeners for PV Module
 window.addEventListener('click', function(event) {
     var voucherModal = document.getElementById('voucher-preview-modal');
     var loadingModal = document.getElementById('loading-modal');
@@ -709,7 +700,10 @@ document.addEventListener('click', function(event) {
     }
 });
 
-// Export functions for global use
+// ============================================
+// EXPORT FUNCTIONS FOR GLOBAL USE
+// ============================================
+
 window.initPVModule = initPVModule;
 window.updateVoucherTypeFields = updateVoucherTypeFields;
 window.toggleWithholdingTax = toggleWithholdingTax;
