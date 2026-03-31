@@ -1,294 +1,291 @@
-/* ============================================
-   ACCOUNTS WORKSPACE - API MODULE
-   All API calls to Google Apps Script backend
-   ============================================ */
+// API Service for Google Apps Script Backend
+class ApiService {
+  constructor() {
+    // UPDATE THIS with your Google Apps Script Web App URL
+    this.BASE_URL = 'https://script.google.com/macros/s/AKfycbxFMMpImLf5BdTkOihOd4RZ-Kk70smJxse8M7sHFrTElgGKXheyOPyIyY0prvPPgVD8/exec';
+    this.cache = new Map();
+  }
 
-const API = (function() {
-    // Private variables
-    let apiUrl = '';
-    let isInitialized = false;
-    
-    // Initialize with config
-    function init() {
-        if (window.APP_CONFIG && window.APP_CONFIG.API_URL) {
-            apiUrl = window.APP_CONFIG.API_URL;
-            isInitialized = true;
-            console.log('API initialized with URL:', apiUrl);
-        } else {
-            console.error('API not configured. Please update config.js with your Google Apps Script URL.');
+  // Generic request method (JSONP)
+  async request(action, data = {}, options = {}) {
+    const showLoading = options.showLoading !== false;
+    try {
+      if (showLoading && window.Utils && window.Utils.showLoading) {
+        window.Utils.showLoading(true);
+      }
+
+      return new Promise((resolve, reject) => {
+        const callbackName = 'callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        const script = document.createElement('script');
+        const url = new URL(this.BASE_URL);
+        url.searchParams.append('action', action);
+        url.searchParams.append('data', JSON.stringify(data));
+        url.searchParams.append('callback', callbackName);
+        
+        window[callbackName] = (response) => {
+          // Cleanup
+          if (script.parentNode) document.head.removeChild(script);
+          delete window[callbackName];
+          
+          if (showLoading && window.Utils && window.Utils.showLoading) {
+            window.Utils.showLoading(false);
+          }
+          
+          if (response && response.success !== false) {
+            const cacheKey = `${action}_${JSON.stringify(data)}`;
+            this.cache.set(cacheKey, response);
+            resolve(response);
+          } else {
+            reject(new Error((response && response.error) || 'API request failed'));
+          }
+        };
+        
+        script.src = url.toString();
+        script.onerror = () => {
+          if (script.parentNode) document.head.removeChild(script);
+          delete window[callbackName];
+          if (showLoading && window.Utils && window.Utils.showLoading) {
+            window.Utils.showLoading(false);
+          }
+          reject(new Error('Network error - failed to connect to server'));
+        };
+        
+        document.head.appendChild(script);
+        
+        // Timeout after 30 seconds
+        setTimeout(() => {
+          if (script.parentNode) {
+            document.head.removeChild(script);
+            delete window[callbackName];
+            if (showLoading && window.Utils && window.Utils.showLoading) {
+              window.Utils.showLoading(false);
+            }
+            reject(new Error('Request timeout after 30 seconds'));
+          }
+        }, 30000);
+      });
+      
+    } catch (error) {
+      if (showLoading && window.Utils && window.Utils.showLoading) {
+        window.Utils.showLoading(false);
+      }
+      throw error;
+    }
+  }
+
+  // ============================================
+  // USER API
+  // ============================================
+  
+  async getUserInfo(options = {}) {
+    return this.request('getUserInfo', {}, options);
+  }
+
+  // ============================================
+  // PAYMENT VOUCHER API
+  // ============================================
+  
+  async processForm(formData, options = {}) {
+    return this.request('processForm', formData, options);
+  }
+  
+  async getNextPVNumber(voucherType, options = {}) {
+    return this.request('getNextPVNumber', { voucherType }, options);
+  }
+  
+  async getPVNumbersByType(options = {}) {
+    return this.request('getPVNumbersByType', {}, options);
+  }
+  
+  async getVoucherByNumber(pvNumber, voucherType, options = {}) {
+    return this.request('getVoucherByNumber', { pvNumber, voucherType }, options);
+  }
+  
+  async updateVoucher(formData, options = {}) {
+    return this.request('updateVoucher', formData, options);
+  }
+
+  // ============================================
+  // INVENTORY API
+  // ============================================
+  
+  async generateInventoryCategoryCode(options = {}) {
+    return this.request('generateInventoryCategoryCode', {}, options);
+  }
+  
+  async getInventoryCategories(options = {}) {
+    return this.request('getInventoryCategories', {}, options);
+  }
+  
+  async getInventoryCategoryDetails(categoryCode, options = {}) {
+    return this.request('getInventoryCategoryDetails', { categoryCode }, options);
+  }
+  
+  async addNewInventory(formData, options = {}) {
+    return this.request('addNewInventory', formData, options);
+  }
+  
+  async restockInventory(formData, options = {}) {
+    return this.request('restockInventory', formData, options);
+  }
+  
+  async getPurchaseReportData(fromDate, toDate, options = {}) {
+    return this.request('getPurchaseReportData', { fromDate, toDate }, options);
+  }
+  
+  async getUsageReportData(fromDate, toDate, options = {}) {
+    return this.request('getUsageReportData', { fromDate, toDate }, options);
+  }
+  
+  async getInventoryListData(options = {}) {
+    return this.request('getInventoryListData', {}, options);
+  }
+  
+  async removeInventory(inventoryCode, options = {}) {
+    return this.request('removeInventory', { inventoryCode }, options);
+  }
+  
+  async recordInventoryUsage(formData, options = {}) {
+    return this.request('recordInventoryUsage', formData, options);
+  }
+
+  // ============================================
+  // FIXED ASSETS API
+  // ============================================
+  
+  async generateAssetCode(assetType, options = {}) {
+    return this.request('generateAssetCode', { assetType }, options);
+  }
+  
+  async getAssetLifeSpan(assetType, options = {}) {
+    return this.request('getAssetLifeSpan', { assetType }, options);
+  }
+  
+  async getDepreciationRate(assetType, options = {}) {
+    return this.request('getDepreciationRate', { assetType }, options);
+  }
+  
+  async addNewAsset(formData, options = {}) {
+    return this.request('addNewAsset', formData, options);
+  }
+  
+  async getDetailedRegister(options = {}) {
+    return this.request('getDetailedRegister', {}, options);
+  }
+  
+  async getSummaryRegister(options = {}) {
+    return this.request('getSummaryRegister', {}, options);
+  }
+  
+  async updateAssetStatus(assetName, newStatus, options = {}) {
+    return this.request('updateAssetStatus', { assetName, newStatus }, options);
+  }
+
+  // ============================================
+  // INVESTMENT API
+  // ============================================
+  
+  async generateInvestmentCode(investmentType, options = {}) {
+    return this.request('generateInvestmentCode', { investmentType }, options);
+  }
+  
+  async addNewInvestment(formData, options = {}) {
+    return this.request('addNewInvestment', formData, options);
+  }
+  
+  async getInvestmentsByDateRange(fromDate, toDate, options = {}) {
+    return this.request('getInvestmentsByDateRange', { fromDate, toDate }, options);
+  }
+  
+  async getUniqueInvestmentTypes(options = {}) {
+    return this.request('getUniqueInvestmentTypes', {}, options);
+  }
+  
+  async getUniqueBanks(options = {}) {
+    return this.request('getUniqueBanks', {}, options);
+  }
+  
+  async getMaturedInvestments(toDate, options = {}) {
+    return this.request('getMaturedInvestments', { toDate }, options);
+  }
+
+  // ============================================
+  // UTILITY API
+  // ============================================
+  
+  async debugGetSheetColumns(options = {}) {
+    return this.request('debugGetSheetColumns', {}, options);
+  }
+  
+  async testConnection(options = {}) {
+    try {
+      const response = await this.request('test', {}, options);
+      return {
+        connected: response && response.success !== false,
+        message: response && response.success !== false ? 'Connected to server' : 'Connection failed'
+      };
+    } catch (error) {
+      return {
+        connected: false,
+        message: 'Connection failed: ' + error.message
+      };
+    }
+  }
+  
+  // Clear cache for specific action or all
+  clearCache(action = null) {
+    if (action) {
+      const keysToDelete = [];
+      for (const key of this.cache.keys()) {
+        if (key.startsWith(action)) {
+          keysToDelete.push(key);
         }
+      }
+      keysToDelete.forEach(key => this.cache.delete(key));
+    } else {
+      this.cache.clear();
     }
-    
-    // Core API call function using JSONP (bypasses CORS)
-    function call(action, data = {}) {
-        return new Promise((resolve, reject) => {
-            if (!apiUrl) {
-                reject(new Error('API not configured. Please check config.js'));
-                return;
-            }
-            
-            console.log(`API Call: ${action}`, data);
-            
-            // Generate a unique callback name
-            const callbackName = 'api_callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-            
-            // Build the URL with parameters
-            const params = new URLSearchParams();
-            params.append('action', action);
-            params.append('callback', callbackName);
-            
-            // Add all data parameters
-            for (const [key, value] of Object.entries(data)) {
-                if (value !== undefined && value !== null) {
-                    if (typeof value === 'object') {
-                        params.append(key, JSON.stringify(value));
-                    } else {
-                        params.append(key, String(value));
-                    }
-                }
-            }
-            
-            const fullUrl = apiUrl + '?' + params.toString();
-            console.log('Request URL:', fullUrl.substring(0, 200) + '...');
-            
-            // Set timeout (30 seconds)
-            const timeoutId = setTimeout(() => {
-                if (window[callbackName]) {
-                    delete window[callbackName];
-                    reject(new Error('Request timeout after 30 seconds'));
-                }
-            }, 30000);
-            
-            // Create the callback function
-            window[callbackName] = function(response) {
-                clearTimeout(timeoutId);
-                delete window[callbackName];
-                
-                // Remove the script tag
-                if (script && script.parentNode) {
-                    script.parentNode.removeChild(script);
-                }
-                
-                console.log(`API Response for ${action}:`, response);
-                
-                if (response && response.error) {
-                    reject(new Error(response.error));
-                } else {
-                    resolve(response);
-                }
-            };
-            
-            // Create and add the script tag
-            const script = document.createElement('script');
-            script.src = fullUrl;
-            script.onerror = function() {
-                clearTimeout(timeoutId);
-                delete window[callbackName];
-                if (script.parentNode) script.parentNode.removeChild(script);
-                reject(new Error('Network error - failed to load script. Check your internet connection and API URL.'));
-            };
-            
-            document.head.appendChild(script);
-        });
-    }
-    
-    // ============================================
-    // USER API
-    // ============================================
-    
-    function getUserInfo() {
-        return call('getUserInfo', {});
-    }
-    
-    // ============================================
-    // PAYMENT VOUCHER API
-    // ============================================
-    
-    function processForm(formData) {
-        return call('processForm', { formData: JSON.stringify(formData) });
-    }
-    
-    function getNextPVNumber(voucherType) {
-        return call('getNextPVNumber', { voucherType: voucherType });
-    }
-    
-    function getPVNumbersByType() {
-        return call('getPVNumbersByType', {});
-    }
-    
-    function getVoucherByNumber(pvNumber, voucherType) {
-        return call('getVoucherByNumber', { pvNumber: pvNumber, voucherType: voucherType });
-    }
-    
-    function updateVoucher(formData) {
-        return call('updateVoucher', { formData: JSON.stringify(formData) });
-    }
-    
-    // ============================================
-    // INVENTORY API
-    // ============================================
-    
-    function generateInventoryCategoryCode() {
-        return call('generateInventoryCategoryCode', {});
-    }
-    
-    function getInventoryCategories() {
-        return call('getInventoryCategories', {});
-    }
-    
-    function getInventoryCategoryDetails(categoryCode) {
-        return call('getInventoryCategoryDetails', { categoryCode: categoryCode });
-    }
-    
-    function addNewInventory(formData) {
-        return call('addNewInventory', { formData: JSON.stringify(formData) });
-    }
-    
-    function restockInventory(formData) {
-        return call('restockInventory', { formData: JSON.stringify(formData) });
-    }
-    
-    function getPurchaseReportData(fromDate, toDate) {
-        return call('getPurchaseReportData', { fromDate: fromDate, toDate: toDate });
-    }
-    
-    function getUsageReportData(fromDate, toDate) {
-        return call('getUsageReportData', { fromDate: fromDate, toDate: toDate });
-    }
-    
-    function getInventoryListData() {
-        return call('getInventoryListData', {});
-    }
-    
-    function removeInventory(inventoryCode) {
-        return call('removeInventory', { inventoryCode: inventoryCode });
-    }
-    
-    function recordInventoryUsage(formData) {
-        return call('recordInventoryUsage', { formData: JSON.stringify(formData) });
-    }
-    
-    // ============================================
-    // FIXED ASSETS API
-    // ============================================
-    
-    function generateAssetCode(assetType) {
-        return call('generateAssetCode', { assetType: assetType });
-    }
-    
-    function getAssetLifeSpan(assetType) {
-        return call('getAssetLifeSpan', { assetType: assetType });
-    }
-    
-    function getDepreciationRate(assetType) {
-        return call('getDepreciationRate', { assetType: assetType });
-    }
-    
-    function addNewAsset(formData) {
-        return call('addNewAsset', { formData: JSON.stringify(formData) });
-    }
-    
-    function getDetailedRegister() {
-        return call('getDetailedRegister', {});
-    }
-    
-    function getSummaryRegister() {
-        return call('getSummaryRegister', {});
-    }
-    
-    function updateAssetStatus(assetName, newStatus) {
-        return call('updateAssetStatus', { assetName: assetName, newStatus: newStatus });
-    }
-    
-    // ============================================
-    // INVESTMENT API
-    // ============================================
-    
-    function generateInvestmentCode(investmentType) {
-        return call('generateInvestmentCode', { investmentType: investmentType });
-    }
-    
-    function addNewInvestment(formData) {
-        return call('addNewInvestment', { formData: JSON.stringify(formData) });
-    }
-    
-    function getInvestmentsByDateRange(fromDate, toDate) {
-        return call('getInvestmentsByDateRange', { fromDate: fromDate, toDate: toDate });
-    }
-    
-    function getUniqueInvestmentTypes() {
-        return call('getUniqueInvestmentTypes', {});
-    }
-    
-    function getUniqueBanks() {
-        return call('getUniqueBanks', {});
-    }
-    
-    function getMaturedInvestments(toDate) {
-        return call('getMaturedInvestments', { toDate: toDate });
-    }
-    
-    // ============================================
-    // UTILITY API
-    // ============================================
-    
-    function debugGetSheetColumns() {
-        return call('debugGetSheetColumns', {});
-    }
-    
-    // ============================================
-    // PUBLIC API
-    // ============================================
-    
-    // Auto-initialize
-    init();
-    
-    return {
-        init,
-        
-        // User
-        getUserInfo,
-        
-        // Payment Voucher
-        processForm,
-        getNextPVNumber,
-        getPVNumbersByType,
-        getVoucherByNumber,
-        updateVoucher,
-        
-        // Inventory
-        generateInventoryCategoryCode,
-        getInventoryCategories,
-        getInventoryCategoryDetails,
-        addNewInventory,
-        restockInventory,
-        getPurchaseReportData,
-        getUsageReportData,
-        getInventoryListData,
-        removeInventory,
-        recordInventoryUsage,
-        
-        // Fixed Assets
-        generateAssetCode,
-        getAssetLifeSpan,
-        getDepreciationRate,
-        addNewAsset,
-        getDetailedRegister,
-        getSummaryRegister,
-        updateAssetStatus,
-        
-        // Investment
-        generateInvestmentCode,
-        addNewInvestment,
-        getInvestmentsByDateRange,
-        getUniqueInvestmentTypes,
-        getUniqueBanks,
-        getMaturedInvestments,
-        
-        // Utility
-        debugGetSheetColumns
-    };
-})();
+  }
+}
 
-// Make API available globally
-window.API = API;
+// Create global API instance
+window.API = new ApiService();
+
+// For backward compatibility with existing modules
+window.callGAS = async function(action, data = {}) {
+  console.warn('callGAS is deprecated. Use API.[method] instead.');
+  
+  // Map actions to API methods
+  const actionMap = {
+    'getUserInfo': () => API.getUserInfo(),
+    'processForm': () => API.processForm(data.formData ? JSON.parse(data.formData) : data),
+    'getNextPVNumber': () => API.getNextPVNumber(data.voucherType),
+    'getPVNumbersByType': () => API.getPVNumbersByType(),
+    'getVoucherByNumber': () => API.getVoucherByNumber(data.pvNumber, data.voucherType),
+    'updateVoucher': () => API.updateVoucher(data.formData ? JSON.parse(data.formData) : data),
+    'generateInventoryCategoryCode': () => API.generateInventoryCategoryCode(),
+    'getInventoryCategories': () => API.getInventoryCategories(),
+    'addNewInventory': () => API.addNewInventory(data.formData ? JSON.parse(data.formData) : data),
+    'getPurchaseReportData': () => API.getPurchaseReportData(data.fromDate, data.toDate),
+    'getUsageReportData': () => API.getUsageReportData(data.fromDate, data.toDate),
+    'getInventoryListData': () => API.getInventoryListData(),
+    'recordInventoryUsage': () => API.recordInventoryUsage(data.formData ? JSON.parse(data.formData) : data),
+    'removeInventory': () => API.removeInventory(data.inventoryCode),
+    'generateAssetCode': () => API.generateAssetCode(data.assetType),
+    'addNewAsset': () => API.addNewAsset(data.formData ? JSON.parse(data.formData) : data),
+    'getDetailedRegister': () => API.getDetailedRegister(),
+    'updateAssetStatus': () => API.updateAssetStatus(data.assetName, data.newStatus),
+    'generateInvestmentCode': () => API.generateInvestmentCode(data.investmentType),
+    'addNewInvestment': () => API.addNewInvestment(data.formData ? JSON.parse(data.formData) : data),
+    'getInvestmentsByDateRange': () => API.getInvestmentsByDateRange(data.fromDate, data.toDate),
+    'getMaturedInvestments': () => API.getMaturedInvestments(data.toDate)
+  };
+  
+  const apiCall = actionMap[action];
+  if (apiCall) {
+    return apiCall();
+  }
+  
+  throw new Error(`Unknown action: ${action}`);
+};
