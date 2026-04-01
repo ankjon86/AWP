@@ -30,7 +30,7 @@
           <label for="purchaseToDate">To:</label>
           <input type="date" id="purchaseToDate" onchange="loadPurchaseReport()">
         </div>
-        <button class="print-report-btn" onclick="printReport('purchaseReportTable')">
+        <button class="print-report-btn" onclick="printUtils.printInventoryReport('purchaseReport')">
           <i class="fas fa-print"></i> Print
         </button>
       </div>
@@ -45,7 +45,7 @@
           <label for="usageToDate">To:</label>
           <input type="date" id="usageToDate" onchange="loadUsageReport()">
         </div>
-        <button class="print-report-btn" onclick="printReport('usageReportTable')">
+        <button class="print-report-btn" onclick="printUtils.printInventoryReport('usageReport')">
           <i class="fas fa-print"></i> Print
         </button>
       </div>
@@ -56,7 +56,7 @@
           <label for="inventoryToDate">As At:</label>
           <input type="date" id="inventoryToDate" onchange="loadInventoryList()">
         </div>
-        <button class="print-report-btn" onclick="printReport('inventoryListTable')">
+        <button class="print-report-btn" onclick="printUtils.printInventoryReport('inventoryList')">
           <i class="fas fa-print"></i> Print
         </button>
       </div>
