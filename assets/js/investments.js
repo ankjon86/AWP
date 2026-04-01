@@ -1248,6 +1248,23 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+// Print functions for investments
+window.printInvestmentPurchase = function() {
+  printUtils.printInvestmentReport('purchaseReport');
+};
+
+window.printInvestmentFull = function() {
+  printUtils.printInvestmentReport('fullReport');
+};
+
+window.printInvestmentInterest = function() {
+  printUtils.printInvestmentReport('interestReport');
+};
+
+window.printInvestmentMatured = function() {
+  printUtils.printInvestmentReport('maturedReport');
+};
+
 // Export for global use
 window.initInvestmentModule = initInvestmentModule;
 window.initInvestmentReportModule = initInvestmentReportModule;
