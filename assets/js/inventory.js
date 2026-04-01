@@ -740,51 +740,33 @@ function hideInventoryLoadingModal() {
 }
 
 // ============================================
-// PRINT REPORT FUNCTION
+// PRINT REPORT FUNCTION - Using unified printUtils
 // ============================================
 
 function printReport(tableId) {
-  // Get the table wrapper
+  // Get the active tab and use unified printUtils
+  const activeTab = document.querySelector('.tab-content.active');
+  if (activeTab) {
+    const tabId = activeTab.id;
+    if (tabId === 'purchaseReport') {
+      printUtils.printInventoryReport('purchaseReport');
+      return;
+    } else if (tabId === 'usageReport') {
+      printUtils.printInventoryReport('usageReport');
+      return;
+    } else if (tabId === 'inventoryList') {
+      printUtils.printInventoryReport('inventoryList');
+      return;
+    }
+  }
+  
+  // Fallback: use old method if needed
   const tableWrapper = document.getElementById(tableId);
   if (!tableWrapper) {
     alert('Report data not found');
     return;
   }
 
-  // Get the active tab title
-  let reportTitle = '';
-  const activeTab = document.querySelector('.tab-content.active');
-  if (activeTab) {
-    const tabId = activeTab.id;
-    if (tabId === 'purchaseReport') reportTitle = 'INVENTORY PURCHASE REPORT';
-    else if (tabId === 'usageReport') reportTitle = 'INVENTORY USAGE REPORT';
-    else if (tabId === 'inventoryList') reportTitle = 'INVENTORY LIST REPORT';
-  }
-
-  // Get date range info
-  let dateInfo = '';
-  if (document.getElementById('purchaseFromDate') && document.getElementById('purchaseFromDate').value) {
-    const fromDate = document.getElementById('purchaseFromDate').value;
-    const toDate = document.getElementById('purchaseToDate').value;
-    if (fromDate && toDate) {
-      dateInfo = `Period: ${fromDate} to ${toDate}`;
-    }
-  } else if (document.getElementById('usageFromDate') && document.getElementById('usageFromDate').value) {
-    const fromDate = document.getElementById('usageFromDate').value;
-    const toDate = document.getElementById('usageToDate').value;
-    if (fromDate && toDate) {
-      dateInfo = `Period: ${fromDate} to ${toDate}`;
-    }
-  } else if (document.getElementById('inventoryToDate') && document.getElementById('inventoryToDate').value) {
-    dateInfo = `As at: ${document.getElementById('inventoryToDate').value}`;
-  }
-
-  // Get current date/time
-  const now = new Date();
-  const printDate = now.toLocaleDateString();
-  const printTime = now.toLocaleTimeString();
-
-  // Clone the table for printing
   const originalTable = tableWrapper.querySelector('table');
   if (!originalTable) {
     alert('Table not found');
@@ -793,7 +775,48 @@ function printReport(tableId) {
   
   const tableClone = originalTable.cloneNode(true);
   
-  // Create print window content
+  // Remove action column if present
+  const actionColumn = tableClone.querySelector('th:last-child');
+  if (actionColumn && actionColumn.textContent.includes('Action')) {
+    const headerRow = tableClone.querySelector('thead tr');
+    if (headerRow && headerRow.lastElementChild) {
+      headerRow.removeChild(headerRow.lastElementChild);
+    }
+    tableClone.querySelectorAll('tbody tr').forEach(row => {
+      if (row.lastElementChild && !row.classList.contains('total-row')) {
+        row.removeChild(row.lastElementChild);
+      }
+    });
+  }
+  
+  // Get report title
+  let reportTitle = '';
+  const activeTab = document.querySelector('.tab-content.active');
+  if (activeTab) {
+    const tabId = activeTab.id;
+    if (tabId === 'purchaseReport') reportTitle = 'INVENTORY PURCHASE REPORT';
+    else if (tabId === 'usageReport') reportTitle = 'INVENTORY USAGE REPORT';
+    else if (tabId === 'inventoryList') reportTitle = 'INVENTORY LIST REPORT';
+  }
+  
+  // Get date info
+  let dateInfo = '';
+  if (document.getElementById('purchaseFromDate') && document.getElementById('purchaseFromDate').value) {
+    const fromDate = document.getElementById('purchaseFromDate').value;
+    const toDate = document.getElementById('purchaseToDate').value;
+    if (fromDate && toDate) dateInfo = `Period: ${fromDate} to ${toDate}`;
+  } else if (document.getElementById('usageFromDate') && document.getElementById('usageFromDate').value) {
+    const fromDate = document.getElementById('usageFromDate').value;
+    const toDate = document.getElementById('usageToDate').value;
+    if (fromDate && toDate) dateInfo = `Period: ${fromDate} to ${toDate}`;
+  } else if (document.getElementById('inventoryToDate') && document.getElementById('inventoryToDate').value) {
+    dateInfo = `As at: ${document.getElementById('inventoryToDate').value}`;
+  }
+  
+  const dateTime = new Date();
+  const printDate = dateTime.toLocaleDateString();
+  const printTime = dateTime.toLocaleTimeString();
+  
   const printContent = `
     <!DOCTYPE html>
     <html>
@@ -801,101 +824,71 @@ function printReport(tableId) {
       <title>${reportTitle}</title>
       <meta charset="UTF-8">
       <style>
-        * {
-          margin: 0;
-          padding: 0;
-          box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-          padding: 20px;
-          font-size: 12px;
+          font-family: 'Segoe UI', Arial, sans-serif;
+          padding: 15mm;
+          font-size: 11px;
+          color: #2d3748;
         }
-        .report-header {
+        .print-header {
           text-align: center;
           margin-bottom: 20px;
           border-bottom: 2px solid #4361ee;
-          padding-bottom: 10px;
+          padding-bottom: 12px;
         }
-        .report-header h1 {
-          font-size: 18px;
-          color: #2d3748;
-          margin-bottom: 5px;
-        }
-        .report-header p {
-          font-size: 11px;
-          color: #6c757d;
-          margin-top: 5px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 15px;
-        }
+        .print-header h1 { font-size: 18px; margin-bottom: 5px; }
+        .print-header .date-info { font-size: 10px; color: #6c757d; margin-top: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th {
           background: #f7fafc;
           padding: 8px 6px;
-          border: 1px solid #ddd;
-          text-align: center;
-          font-size: 11px;
+          border: 1px solid #cbd5e0;
+          font-size: 10px;
           font-weight: 600;
           text-transform: uppercase;
         }
-        td {
-          padding: 6px;
-          border: 1px solid #ddd;
-          text-align: center;
-          font-size: 11px;
-        }
-        .total-row {
-          background: #e8f8f3;
-          font-weight: 600;
-        }
-        .footer {
-          margin-top: 20px;
-          text-align: center;
-          font-size: 10px;
-          color: #6c757d;
-          border-top: 1px solid #ddd;
-          padding-top: 10px;
-        }
-        @media print {
-          body {
-            padding: 10mm;
-          }
-          .no-print {
-            display: none;
-          }
-        }
+        td { padding: 6px; border: 1px solid #e2e8f0; font-size: 10px; text-align: center; }
+        .total-row { background: #e8f8f3; font-weight: 600; }
+        @media print { body { padding: 10mm; } }
       </style>
     </head>
     <body>
-      <div class="report-header">
+      <div class="print-header">
         <h1>${reportTitle}</h1>
-        <p>${dateInfo}</p>
-        <p>Printed on: ${printDate} at ${printTime}</p>
+        <div class="date-info">${dateInfo}</div>
+        <div class="date-info">Printed on: ${printDate} at ${printTime}</div>
       </div>
       ${tableClone.outerHTML}
-      <div class="footer">
-        <p>Accounts Workspace - Inventory Management System</p>
-      </div>
     </body>
     </html>
   `;
 
-  // Open print window
   const printWindow = window.open('', '_blank');
   printWindow.document.write(printContent);
   printWindow.document.close();
   printWindow.focus();
   printWindow.print();
-  
-  // Close after print or after timeout
-  setTimeout(() => {
-    printWindow.close();
-  }, 1000);
+  setTimeout(() => printWindow.close(), 1000);
 }
 
+// Export functions for global use
+window.initInventoryModule = initInventoryModule;
+window.initInventoryReportModule = initInventoryReportModule;
+window.handleNewCategoryChange = handleNewCategoryChange;
+window.calculateUnitPrice = calculateUnitPrice;
+window.submitNewInventory = submitNewInventory;
+window.switchInventoryTab = switchInventoryTab;
+window.loadPurchaseReport = loadPurchaseReport;
+window.loadUsageReport = loadUsageReport;
+window.loadInventoryList = loadInventoryList;
+window.openInventoryActionDropdown = openInventoryActionDropdown;
+window.openUsageModal = openUsageModal;
+window.closeUsageModal = closeUsageModal;
+window.submitUsageRecord = submitUsageRecord;
+window.removeInventoryItem = removeInventoryItem;
+window.closeInventoryModal = closeInventoryModal;
+window.printReport = printReport;
 
 
 
