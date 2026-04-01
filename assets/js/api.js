@@ -1,44 +1,66 @@
-// API Service for Google Apps Script Backend
+/* ============================================
+   ACCOUNTS WORKSPACE - API MODULE
+   All API calls to Google Apps Script backend
+   ============================================ */
+
 class ApiService {
   constructor() {
     // UPDATE THIS with your Google Apps Script Web App URL
     this.BASE_URL = 'https://script.google.com/macros/s/AKfycbwhrAckDK-eLguLKM5WcV9HtUuE6D8I-Q2g-lckarcpSPfigqKsKAfVqIRMU1ppcBCkIQ/exec';
     this.cache = new Map();
+    this.debug = true; // Set to false in production
+  }
+
+  log(...args) {
+    if (this.debug) {
+      console.log('[API]', ...args);
+    }
+  }
+
+  error(...args) {
+    console.error('[API]', ...args);
   }
 
   // Generic request method (JSONP)
   async request(action, data = {}, options = {}) {
     const showLoading = options.showLoading !== false;
-    console.log(`[API] Requesting: ${action}`, data, options);
     
-    try {
-      if (showLoading && window.Utils && window.Utils.showLoading) {
-        window.Utils.showLoading(true);
-      }
-
-      return new Promise((resolve, reject) => {
-        const callbackName = 'callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    return new Promise((resolve, reject) => {
+      try {
+        // Generate a unique callback name
+        const callbackName = 'api_callback_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         
-        const script = document.createElement('script');
+        // Build the URL with parameters
         const url = new URL(this.BASE_URL);
         url.searchParams.append('action', action);
         url.searchParams.append('data', JSON.stringify(data));
         url.searchParams.append('callback', callbackName);
         
-        console.log(`[API] URL: ${url.toString()}`);
+        const fullUrl = url.toString();
+        this.log(`Requesting: ${action}`, data);
+        this.log(`URL: ${fullUrl.substring(0, 300)}...`);
         
+        // Set timeout
+        const timeoutId = setTimeout(() => {
+          if (window[callbackName]) {
+            delete window[callbackName];
+            this.error(`Request timeout for ${action}`);
+            reject(new Error('Request timeout after 30 seconds'));
+          }
+        }, 30000);
+        
+        // Create the callback function
         window[callbackName] = (response) => {
-          console.log(`[API] Response for ${action}:`, response);
-          
-          // Cleanup
-          if (script.parentNode) document.head.removeChild(script);
+          clearTimeout(timeoutId);
           delete window[callbackName];
           
-          if (showLoading && window.Utils && window.Utils.showLoading) {
-            window.Utils.showLoading(false);
+          if (script.parentNode) {
+            script.parentNode.removeChild(script);
           }
           
-          if (response && response.success !== false && !response.error) {
+          this.log(`Response for ${action}:`, response);
+          
+          if (response && response.success !== false) {
             const cacheKey = `${action}_${JSON.stringify(data)}`;
             this.cache.set(cacheKey, response);
             resolve(response);
@@ -47,70 +69,25 @@ class ApiService {
           }
         };
         
-        script.src = url.toString();
+        // Create and add the script tag
+        const script = document.createElement('script');
+        script.src = fullUrl;
         script.onerror = () => {
-          console.error(`[API] Script error for ${action}`);
-          if (script.parentNode) document.head.removeChild(script);
+          clearTimeout(timeoutId);
           delete window[callbackName];
-          if (showLoading && window.Utils && window.Utils.showLoading) {
-            window.Utils.showLoading(false);
-          }
+          if (script.parentNode) script.parentNode.removeChild(script);
+          this.error(`Script error for ${action}`);
           reject(new Error('Network error - failed to connect to server'));
         };
         
         document.head.appendChild(script);
-        console.log(`[API] Script tag added for ${action}`);
+        this.log(`Script tag added for ${action}`);
         
-        // Timeout after 30 seconds
-        setTimeout(() => {
-          if (script.parentNode) {
-            console.error(`[API] Timeout for ${action}`);
-            document.head.removeChild(script);
-            delete window[callbackName];
-            if (showLoading && window.Utils && window.Utils.showLoading) {
-              window.Utils.showLoading(false);
-            }
-            reject(new Error('Request timeout after 30 seconds'));
-          }
-        }, 30000);
-      });
-      
-    } catch (error) {
-      console.error(`[API] Exception in request:`, error);
-      if (showLoading && window.Utils && window.Utils.showLoading) {
-        window.Utils.showLoading(false);
+      } catch (error) {
+        this.error(`Request error for ${action}:`, error);
+        reject(error);
       }
-      throw error;
-    }
-  }
-
-  // ============================================
-  // PAYMENT VOUCHER API
-  // ============================================
-  
-  async getNextPVNumber(voucherType, options = {}) {
-    console.log('[API] getNextPVNumber called with:', voucherType);
-    return this.request('getNextPVNumber', { voucherType }, { showLoading: false, ...options });
-  }
-  
-  async getPVNumbersByType(options = {}) {
-    console.log('[API] getPVNumbersByType called');
-    return this.request('getPVNumbersByType', {}, { showLoading: false, ...options });
-  }
-  
-  async getVoucherByNumber(pvNumber, voucherType, options = {}) {
-    console.log('[API] getVoucherByNumber called with:', pvNumber, voucherType);
-    return this.request('getVoucherByNumber', { pvNumber, voucherType }, { showLoading: false, ...options });
-  }
-  
-  async processForm(formData, options = {}) {
-    console.log('[API] processForm called with:', formData);
-    return this.request('processForm', { formData: JSON.stringify(formData) }, options);
-  }
-  
-  async updateVoucher(formData, options = {}) {
-    console.log('[API] updateVoucher called with:', formData);
-    return this.request('updateVoucher', { formData: JSON.stringify(formData) }, options);
+    });
   }
 
   // ============================================
@@ -118,8 +95,32 @@ class ApiService {
   // ============================================
   
   async getUserInfo(options = {}) {
-    console.log('[API] getUserInfo called');
     return this.request('getUserInfo', {}, options);
+  }
+
+  // ============================================
+  // PAYMENT VOUCHER API
+  // ============================================
+  
+  async processForm(formData, options = {}) {
+    this.log('processForm called with:', formData);
+    return this.request('processForm', { formData: JSON.stringify(formData) }, options);
+  }
+  
+  async getNextPVNumber(voucherType, options = {}) {
+    return this.request('getNextPVNumber', { voucherType }, options);
+  }
+  
+  async getPVNumbersByType(options = {}) {
+    return this.request('getPVNumbersByType', {}, options);
+  }
+  
+  async getVoucherByNumber(pvNumber, voucherType, options = {}) {
+    return this.request('getVoucherByNumber', { pvNumber, voucherType }, options);
+  }
+  
+  async updateVoucher(formData, options = {}) {
+    return this.request('updateVoucher', { formData: JSON.stringify(formData) }, options);
   }
 
   // ============================================
@@ -135,7 +136,7 @@ class ApiService {
   }
   
   async addNewInventory(formData, options = {}) {
-    return this.request('addNewInventory', formData, options);
+    return this.request('addNewInventory', { formData: JSON.stringify(formData) }, options);
   }
   
   async getPurchaseReportData(fromDate, toDate, options = {}) {
@@ -151,7 +152,7 @@ class ApiService {
   }
   
   async recordInventoryUsage(formData, options = {}) {
-    return this.request('recordInventoryUsage', formData, options);
+    return this.request('recordInventoryUsage', { formData: JSON.stringify(formData) }, options);
   }
   
   async removeInventory(inventoryCode, options = {}) {
@@ -167,7 +168,7 @@ class ApiService {
   }
   
   async addNewAsset(formData, options = {}) {
-    return this.request('addNewAsset', formData, options);
+    return this.request('addNewAsset', { formData: JSON.stringify(formData) }, options);
   }
   
   async getDetailedRegister(options = {}) {
@@ -187,7 +188,7 @@ class ApiService {
   }
   
   async addNewInvestment(formData, options = {}) {
-    return this.request('addNewInvestment', formData, options);
+    return this.request('addNewInvestment', { formData: JSON.stringify(formData) }, options);
   }
   
   async getInvestmentsByDateRange(fromDate, toDate, options = {}) {
@@ -197,9 +198,9 @@ class ApiService {
   async getMaturedInvestments(toDate, options = {}) {
     return this.request('getMaturedInvestments', { toDate }, options);
   }
-
+  
   // ============================================
-  // UTILITY API
+  // TEST CONNECTION
   // ============================================
   
   async testConnection(options = {}) {
@@ -234,19 +235,18 @@ class ApiService {
 
 // Create global API instance
 window.API = new ApiService();
-console.log('[API] ApiService initialized');
 
-// For backward compatibility
+// For backward compatibility with modules still using callGAS
 window.callGAS = async function(action, data = {}) {
   console.warn('callGAS is deprecated. Use API.[method] instead.');
   
   const actionMap = {
+    'getUserInfo': () => API.getUserInfo(),
+    'processForm': () => API.processForm(data),
     'getNextPVNumber': () => API.getNextPVNumber(data.voucherType),
     'getPVNumbersByType': () => API.getPVNumbersByType(),
     'getVoucherByNumber': () => API.getVoucherByNumber(data.pvNumber, data.voucherType),
-    'processForm': () => API.processForm(data),
     'updateVoucher': () => API.updateVoucher(data),
-    'getUserInfo': () => API.getUserInfo(),
     'generateInventoryCategoryCode': () => API.generateInventoryCategoryCode(),
     'getInventoryCategories': () => API.getInventoryCategories(),
     'addNewInventory': () => API.addNewInventory(data),
