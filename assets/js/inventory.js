@@ -739,6 +739,166 @@ function hideInventoryLoadingModal() {
   if (modal) modal.style.display = 'none';
 }
 
+// ============================================
+// PRINT REPORT FUNCTION
+// ============================================
+
+function printReport(tableId) {
+  // Get the table wrapper
+  const tableWrapper = document.getElementById(tableId);
+  if (!tableWrapper) {
+    alert('Report data not found');
+    return;
+  }
+
+  // Get the active tab title
+  let reportTitle = '';
+  const activeTab = document.querySelector('.tab-content.active');
+  if (activeTab) {
+    const tabId = activeTab.id;
+    if (tabId === 'purchaseReport') reportTitle = 'INVENTORY PURCHASE REPORT';
+    else if (tabId === 'usageReport') reportTitle = 'INVENTORY USAGE REPORT';
+    else if (tabId === 'inventoryList') reportTitle = 'INVENTORY LIST REPORT';
+  }
+
+  // Get date range info
+  let dateInfo = '';
+  if (document.getElementById('purchaseFromDate') && document.getElementById('purchaseFromDate').value) {
+    const fromDate = document.getElementById('purchaseFromDate').value;
+    const toDate = document.getElementById('purchaseToDate').value;
+    if (fromDate && toDate) {
+      dateInfo = `Period: ${fromDate} to ${toDate}`;
+    }
+  } else if (document.getElementById('usageFromDate') && document.getElementById('usageFromDate').value) {
+    const fromDate = document.getElementById('usageFromDate').value;
+    const toDate = document.getElementById('usageToDate').value;
+    if (fromDate && toDate) {
+      dateInfo = `Period: ${fromDate} to ${toDate}`;
+    }
+  } else if (document.getElementById('inventoryToDate') && document.getElementById('inventoryToDate').value) {
+    dateInfo = `As at: ${document.getElementById('inventoryToDate').value}`;
+  }
+
+  // Get current date/time
+  const now = new Date();
+  const printDate = now.toLocaleDateString();
+  const printTime = now.toLocaleTimeString();
+
+  // Clone the table for printing
+  const originalTable = tableWrapper.querySelector('table');
+  if (!originalTable) {
+    alert('Table not found');
+    return;
+  }
+  
+  const tableClone = originalTable.cloneNode(true);
+  
+  // Create print window content
+  const printContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${reportTitle}</title>
+      <meta charset="UTF-8">
+      <style>
+        * {
+          margin: 0;
+          padding: 0;
+          box-sizing: border-box;
+        }
+        body {
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          padding: 20px;
+          font-size: 12px;
+        }
+        .report-header {
+          text-align: center;
+          margin-bottom: 20px;
+          border-bottom: 2px solid #4361ee;
+          padding-bottom: 10px;
+        }
+        .report-header h1 {
+          font-size: 18px;
+          color: #2d3748;
+          margin-bottom: 5px;
+        }
+        .report-header p {
+          font-size: 11px;
+          color: #6c757d;
+          margin-top: 5px;
+        }
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 15px;
+        }
+        th {
+          background: #f7fafc;
+          padding: 8px 6px;
+          border: 1px solid #ddd;
+          text-align: center;
+          font-size: 11px;
+          font-weight: 600;
+          text-transform: uppercase;
+        }
+        td {
+          padding: 6px;
+          border: 1px solid #ddd;
+          text-align: center;
+          font-size: 11px;
+        }
+        .total-row {
+          background: #e8f8f3;
+          font-weight: 600;
+        }
+        .footer {
+          margin-top: 20px;
+          text-align: center;
+          font-size: 10px;
+          color: #6c757d;
+          border-top: 1px solid #ddd;
+          padding-top: 10px;
+        }
+        @media print {
+          body {
+            padding: 10mm;
+          }
+          .no-print {
+            display: none;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="report-header">
+        <h1>${reportTitle}</h1>
+        <p>${dateInfo}</p>
+        <p>Printed on: ${printDate} at ${printTime}</p>
+      </div>
+      ${tableClone.outerHTML}
+      <div class="footer">
+        <p>Accounts Workspace - Inventory Management System</p>
+      </div>
+    </body>
+    </html>
+  `;
+
+  // Open print window
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(printContent);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+  
+  // Close after print or after timeout
+  setTimeout(() => {
+    printWindow.close();
+  }, 1000);
+}
+
+
+
+
 // Export functions for global use
 window.initInventoryModule = initInventoryModule;
 window.initInventoryReportModule = initInventoryReportModule;
@@ -755,3 +915,4 @@ window.closeUsageModal = closeUsageModal;
 window.submitUsageRecord = submitUsageRecord;
 window.removeInventoryItem = removeInventoryItem;
 window.closeInventoryModal = closeInventoryModal;
+window.printReport = printReport;
