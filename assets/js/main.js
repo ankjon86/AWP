@@ -1,155 +1,138 @@
-window.Utils = {
-  showLoading: function(show) {
-    if (show) {
-      const overlay = document.getElementById('loadingOverlay');
-      if (overlay) {
-        overlay.style.display = 'flex';
-      }
-    } else {
-      const overlay = document.getElementById('loadingOverlay');
-      if (overlay) {
-        overlay.style.display = 'none';
+// Global Variables
+let currentOpenSubmenu = null;
+let sidebarCollapsed = false;
+let currentUser = null;
+let currentModule = 'dashboard';
+
+// ============================================
+// COMPATIBILITY LAYER - For modules using google.script.run
+// ============================================
+
+// Create a wrapper that mimics google.script.run for compatibility
+const google = {
+  script: {
+    run: {
+      withSuccessHandler: function(callback) {
+        return {
+          withFailureHandler: function(errorCallback) {
+            return {
+              [actionName]: function(...args) {
+                // Map the action to API methods
+                const actionMap = {
+                  'getUserInfo': () => API.getUserInfo(),
+                  'processForm': () => API.processForm(args[0]),
+                  'getNextPVNumber': () => API.getNextPVNumber(args[0]),
+                  'getPVNumbersByType': () => API.getPVNumbersByType(),
+                  'getVoucherByNumber': () => API.getVoucherByNumber(args[0], args[1]),
+                  'updateVoucher': () => API.updateVoucher(args[0]),
+                  'generateInventoryCategoryCode': () => API.generateInventoryCategoryCode(),
+                  'getInventoryCategories': () => API.getInventoryCategories(),
+                  'addNewInventory': () => API.addNewInventory(args[0]),
+                  'getPurchaseReportData': () => API.getPurchaseReportData(args[0], args[1]),
+                  'getUsageReportData': () => API.getUsageReportData(args[0], args[1]),
+                  'getInventoryListData': () => API.getInventoryListData(),
+                  'recordInventoryUsage': () => API.recordInventoryUsage(args[0]),
+                  'removeInventory': () => API.removeInventory(args[0]),
+                  'generateAssetCode': () => API.generateAssetCode(args[0]),
+                  'addNewAsset': () => API.addNewAsset(args[0]),
+                  'getDetailedRegister': () => API.getDetailedRegister(),
+                  'updateAssetStatus': () => API.updateAssetStatus(args[0], args[1]),
+                  'generateInvestmentCode': () => API.generateInvestmentCode(args[0]),
+                  'addNewInvestment': () => API.addNewInvestment(args[0]),
+                  'getInvestmentsByDateRange': () => API.getInvestmentsByDateRange(args[0], args[1]),
+                  'getMaturedInvestments': () => API.getMaturedInvestments(args[0]),
+                  'getPVFormHTML': () => Promise.resolve(loadModuleFile('paymentVoucher')),
+                  'getAddInventoryHTML': () => Promise.resolve(loadModuleFile('inventoryAdd')),
+                  'getInventoryReportHTML': () => Promise.resolve(loadModuleFile('inventoryReport')),
+                  'getAddAssetHTML': () => Promise.resolve(loadModuleFile('addAsset')),
+                  'getAssetRegisterHTML': () => Promise.resolve(loadModuleFile('viewAssetRegister')),
+                  'getInvestmentAddHTML': () => Promise.resolve(loadModuleFile('investmentAdd')),
+                  'getInvestmentReportHTML': () => Promise.resolve(loadModuleFile('investmentReport'))
+                };
+                
+                const action = Object.keys(actionMap).find(key => {
+                  const fn = actionMap[key];
+                  return fn && typeof fn === 'function';
+                });
+                
+                // Get the actual function name from the call
+                const callerName = new Error().stack.split('\n')[2].match(/at (\w+)/)?.[1];
+                
+                const apiCall = actionMap[callerName];
+                if (apiCall) {
+                  apiCall()
+                    .then(response => {
+                      if (callback) callback(response);
+                    })
+                    .catch(error => {
+                      if (errorCallback) errorCallback(error);
+                    });
+                }
+                
+                return this;
+              }
+            };
+          }
+        };
       }
     }
   }
 };
 
-// Global Variables
-let currentUser = null;
-let currentOpenSubmenu = null;
-let sidebarCollapsed = false;
-let currentModule = 'dashboard';
-
-// ============================================
-// COMPATIBILITY LAYER - For modules still using callGAS
-// ============================================
-
-function callGAS(action, data = {}) {
-    console.warn('callGAS is deprecated. Use API.[method] instead. Action:', action);
-    
-    // Map actions to API methods
-    const actionMap = {
-        // User
-        'getUserInfo': () => API.getUserInfo(),
-        
-        // Payment Voucher
-        'processForm': () => API.processForm(data.formData ? JSON.parse(data.formData) : data),
-        'getNextPVNumber': () => API.getNextPVNumber(data.voucherType),
-        'getPVNumbersByType': () => API.getPVNumbersByType(),
-        'getVoucherByNumber': () => API.getVoucherByNumber(data.pvNumber, data.voucherType),
-        'updateVoucher': () => API.updateVoucher(data.formData ? JSON.parse(data.formData) : data),
-        
-        // Inventory
-        'generateInventoryCategoryCode': () => API.generateInventoryCategoryCode(),
-        'getInventoryCategories': () => API.getInventoryCategories(),
-        'addNewInventory': () => API.addNewInventory(data.formData ? JSON.parse(data.formData) : data),
-        'getPurchaseReportData': () => API.getPurchaseReportData(data.fromDate, data.toDate),
-        'getUsageReportData': () => API.getUsageReportData(data.fromDate, data.toDate),
-        'getInventoryListData': () => API.getInventoryListData(),
-        'recordInventoryUsage': () => API.recordInventoryUsage(data.formData ? JSON.parse(data.formData) : data),
-        'removeInventory': () => API.removeInventory(data.inventoryCode),
-        
-        // Fixed Assets
-        'generateAssetCode': () => API.generateAssetCode(data.assetType),
-        'addNewAsset': () => API.addNewAsset(data.formData ? JSON.parse(data.formData) : data),
-        'getDetailedRegister': () => API.getDetailedRegister(),
-        'updateAssetStatus': () => API.updateAssetStatus(data.assetName, data.newStatus),
-        
-        // Investment
-        'generateInvestmentCode': () => API.generateInvestmentCode(data.investmentType),
-        'addNewInvestment': () => API.addNewInvestment(data.formData ? JSON.parse(data.formData) : data),
-        'getInvestmentsByDateRange': () => API.getInvestmentsByDateRange(data.fromDate, data.toDate),
-        'getMaturedInvestments': () => API.getMaturedInvestments(data.toDate)
-    };
-    
-    const apiCall = actionMap[action];
-    if (apiCall) {
-        return apiCall();
-    }
-    
-    console.error('Unknown action:', action);
-    return Promise.reject(new Error(`Unknown action: ${action}`));
+// Helper to load module HTML files
+async function loadModuleFile(moduleName) {
+  const modules = {
+    'paymentVoucher': 'modules/payment-voucher.html',
+    'inventoryAdd': 'modules/add-inventory.html',
+    'inventoryReport': 'modules/inventory-report.html',
+    'addAsset': 'modules/add-asset.html',
+    'viewAssetRegister': 'modules/asset-register.html',
+    'investmentAdd': 'modules/add-investment.html',
+    'investmentReport': 'modules/investment-report.html'
+  };
+  
+  try {
+    const response = await fetch(modules[moduleName]);
+    return await response.text();
+  } catch (error) {
+    console.error('Error loading module file:', error);
+    return '';
+  }
 }
 
-// Make callGAS available globally for backward compatibility
-window.callGAS = callGAS;
+// Make google.script.run available globally
+window.google = google;
 
 // ============================================
 // INITIALIZATION
 // ============================================
 
-document.addEventListener('DOMContentLoaded', function() {
-    initializeApp();
-});
+window.onload = function() {
+  initializeApp();
+};
 
 function initializeApp() {
-    loadUserInfo();
-    setupEventListeners();
-    setupSidebarToggleOnResize();
-    loadModule('dashboard');
-    
-    // Check if sidebar should be collapsed based on screen size
-    if (window.innerWidth <= 768) {
-        sidebarCollapsed = true;
-        document.getElementById('sidebar').classList.add('collapsed');
-    }
+  loadUserInfo();
+  setupEventListeners();
+  loadContent('dashboard');
+  
+  // Check if sidebar should be collapsed based on screen size
+  if (window.innerWidth <= 768) {
+    sidebarCollapsed = true;
+    document.getElementById('sidebar').classList.add('collapsed');
+  }
 }
 
 function setupEventListeners() {
-    // Close user dropdown when clicking outside
-    document.addEventListener('click', function(event) {
-        const userMenu = document.querySelector('.user-menu');
-        const userDropdown = document.getElementById('userDropdown');
-        
-        if (userMenu && !userMenu.contains(event.target)) {
-            if (userDropdown) userDropdown.classList.remove('show');
-        }
-    });
-    
-    // Handle escape key to close modals
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            closeAllModals();
-        }
-    });
-}
-
-function setupSidebarToggleOnResize() {
-    window.addEventListener('resize', function() {
-        if (window.innerWidth > 768 && sidebarCollapsed) {
-            // Do nothing, keep collapsed state
-        } else if (window.innerWidth <= 768) {
-            document.getElementById('sidebar').classList.remove('show-mobile');
-        }
-    });
-}
-
-function closeAllModals() {
-    // Close user dropdown
+  // Close user dropdown when clicking outside
+  document.addEventListener('click', function(event) {
+    const userMenu = document.querySelector('.user-menu');
     const userDropdown = document.getElementById('userDropdown');
-    if (userDropdown) userDropdown.classList.remove('show');
     
-    // Close any open action dropdowns
-    closeActionDropdowns();
-    
-    // Close any open modals
-    const modals = document.querySelectorAll('.modal');
-    modals.forEach(modal => {
-        if (modal.style.display === 'flex') {
-            modal.style.display = 'none';
-        }
-    });
-}
-
-function closeActionDropdowns() {
-    const portals = document.querySelectorAll('.action-dropdown-portal');
-    portals.forEach(portal => {
-        if (portal) {
-            portal.innerHTML = '';
-            portal.style.display = 'none';
-        }
-    });
-    window.__portalOpen = false;
+    if (userMenu && !userMenu.contains(event.target)) {
+      if (userDropdown) userDropdown.classList.remove('show');
+    }
+  });
 }
 
 // ============================================
@@ -157,30 +140,21 @@ function closeActionDropdowns() {
 // ============================================
 
 function loadUserInfo() {
-    const userNameEl = document.getElementById('userName');
-    if (userNameEl) {
-        userNameEl.textContent = 'Loading...';
-    }
-    
-    API.getUserInfo()
-        .then(response => {
-            if (response && response.success !== false) {
-                currentUser = response;
-                const userNameSpan = document.getElementById('userName');
-                if (userNameSpan) {
-                    userNameSpan.textContent = response.name || response.email || 'User';
-                }
-            } else {
-                throw new Error('No user data');
-            }
-        })
-        .catch(error => {
-            console.error('Error loading user:', error);
-            const userNameSpan = document.getElementById('userName');
-            if (userNameSpan) {
-                userNameSpan.textContent = 'Guest';
-            }
-        });
+  const userNameEl = document.getElementById('userName');
+  if (userNameEl) {
+    userNameEl.textContent = 'Loading...';
+  }
+  
+  google.script.run
+    .withSuccessHandler(function(user) {
+      currentUser = user;
+      document.getElementById('userName').textContent = user.name || 'User';
+    })
+    .withFailureHandler(function(error) {
+      console.error('Error loading user:', error);
+      document.getElementById('userName').textContent = 'Guest';
+    })
+    .getUserInfo();
 }
 
 // ============================================
@@ -188,383 +162,324 @@ function loadUserInfo() {
 // ============================================
 
 function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.querySelector('.main-content');
+  const sidebar = document.getElementById('sidebar');
+  const mainContent = document.querySelector('.main-content');
+  
+  if (window.innerWidth <= 768) {
+    sidebar.classList.toggle('show-mobile');
+  } else {
+    sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('expanded');
+    sidebarCollapsed = sidebar.classList.contains('collapsed');
     
-    if (window.innerWidth <= 768) {
-        sidebar.classList.toggle('show-mobile');
-    } else {
-        sidebar.classList.toggle('collapsed');
-        if (mainContent) {
-            mainContent.classList.toggle('expanded');
-        }
-        sidebarCollapsed = sidebar.classList.contains('collapsed');
-        
-        // Close all submenus when sidebar is collapsed
-        if (sidebarCollapsed) {
-            document.querySelectorAll('.submenu').forEach(menu => {
-                menu.classList.remove('show');
-            });
-            document.querySelectorAll('.dropdown-icon').forEach(icon => {
-                icon.classList.remove('rotated');
-            });
-            currentOpenSubmenu = null;
-        }
+    // Close all submenus when sidebar is collapsed
+    if (sidebarCollapsed) {
+      document.querySelectorAll('.submenu').forEach(menu => {
+        menu.classList.remove('show');
+      });
+      document.querySelectorAll('.dropdown-icon').forEach(icon => {
+        icon.classList.remove('rotated');
+      });
+      currentOpenSubmenu = null;
     }
+  }
 }
 
 function toggleUserMenu() {
-    const dropdown = document.getElementById('userDropdown');
-    if (dropdown) {
-        dropdown.classList.toggle('show');
-    }
+  const dropdown = document.getElementById('userDropdown');
+  dropdown.classList.toggle('show');
 }
 
 function toggleSubmenu(submenuId) {
-    if (sidebarCollapsed && window.innerWidth > 768) return;
-    
-    const submenu = document.getElementById(submenuId);
-    const icon = document.getElementById(submenuId.replace('Submenu', 'Icon'));
-    
-    // Close other submenus
-    if (currentOpenSubmenu && currentOpenSubmenu !== submenu) {
-        currentOpenSubmenu.classList.remove('show');
-        const prevIcon = document.getElementById(currentOpenSubmenu.id.replace('Submenu', 'Icon'));
-        if (prevIcon) prevIcon.classList.remove('rotated');
-    }
-    
-    if (submenu) {
-        submenu.classList.toggle('show');
-        if (icon) icon.classList.toggle('rotated');
-        currentOpenSubmenu = submenu.classList.contains('show') ? submenu : null;
-    }
-}
-
-function showLoading(message = 'Loading...') {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-        const messageEl = overlay.querySelector('p');
-        if (messageEl) messageEl.textContent = message;
-        overlay.style.display = 'flex';
-    }
-}
-
-function hideLoading() {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-        overlay.style.display = 'none';
-    }
-}
-
-function showToast(message, type = 'success') {
-    // Create toast element if it doesn't exist
-    let toast = document.getElementById('global-toast');
-    if (!toast) {
-        toast = document.createElement('div');
-        toast.id = 'global-toast';
-        toast.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 12px 20px;
-            border-radius: 8px;
-            color: white;
-            font-size: 14px;
-            font-weight: 500;
-            z-index: 3000;
-            animation: slideInRight 0.3s ease;
-            max-width: 350px;
-            word-wrap: break-word;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        `;
-        document.body.appendChild(toast);
-        
-        // Add animation style if not present
-        if (!document.querySelector('#toast-animation-style')) {
-            const style = document.createElement('style');
-            style.id = 'toast-animation-style';
-            style.textContent = `
-                @keyframes slideInRight {
-                    from {
-                        transform: translateX(100%);
-                        opacity: 0;
-                    }
-                    to {
-                        transform: translateX(0);
-                        opacity: 1;
-                    }
-                }
-                @keyframes slideOutRight {
-                    from {
-                        transform: translateX(0);
-                        opacity: 1;
-                    }
-                    to {
-                        transform: translateX(100%);
-                        opacity: 0;
-                    }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-    }
-    
-    // Set background color based on type
-    const colors = {
-        success: '#06d6a0',
-        error: '#ef476f',
-        warning: '#ffd166',
-        info: '#4361ee'
-    };
-    toast.style.backgroundColor = colors[type] || colors.success;
-    toast.textContent = message;
-    toast.style.display = 'block';
-    toast.style.animation = 'slideInRight 0.3s ease';
-    
-    // Auto-hide after 3 seconds
-    setTimeout(() => {
-        toast.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => {
-            toast.style.display = 'none';
-        }, 300);
-    }, 3000);
-}
-
-function showError(message) {
-    showToast(message, 'error');
-    console.error(message);
-}
-
-function showSuccess(message) {
-    showToast(message, 'success');
-}
-
-function closeSidebarMobile() {
-    if (window.innerWidth <= 768) {
-        const sidebar = document.getElementById('sidebar');
-        if (sidebar) {
-            sidebar.classList.remove('show-mobile');
-        }
-    }
+  if (sidebarCollapsed && window.innerWidth > 768) return;
+  
+  const submenu = document.getElementById(submenuId);
+  const icon = document.getElementById(submenuId.replace('Submenu', 'Icon'));
+  
+  // Close other submenus
+  if (currentOpenSubmenu && currentOpenSubmenu !== submenu) {
+    currentOpenSubmenu.classList.remove('show');
+    const prevIcon = document.getElementById(currentOpenSubmenu.id.replace('Submenu', 'Icon'));
+    if (prevIcon) prevIcon.classList.remove('rotated');
+  }
+  
+  submenu.classList.toggle('show');
+  if (icon) icon.classList.toggle('rotated');
+  currentOpenSubmenu = submenu.classList.contains('show') ? submenu : null;
 }
 
 // ============================================
-// MODULE LOADING
+// LOADING MODAL
 // ============================================
 
-async function loadModule(moduleName) {
-    if (currentModule === moduleName) return;
-    
-    showLoading('Loading module...');
-    currentModule = moduleName;
-    
-    // Update active state in sidebar
-    updateActiveMenuItem(moduleName);
-    
-    const modules = {
-        'dashboard': { file: 'modules/dashboard.html', init: 'initDashboard' },
-        'paymentVoucher': { file: 'modules/payment-voucher.html', init: 'initPVModule' },
-        'inventoryAdd': { file: 'modules/add-inventory.html', init: 'initInventoryModule' },
-        'inventoryReport': { file: 'modules/inventory-report.html', init: 'initInventoryReportModule' },
-        'addAsset': { file: 'modules/add-asset.html', init: 'initAssetModule' },
-        'viewAssetRegister': { file: 'modules/asset-register.html', init: 'initAssetRegisterModule' },
-        'investmentAdd': { file: 'modules/add-investment.html', init: 'initInvestmentModule' },
-        'investmentReport': { file: 'modules/investment-report.html', init: 'initInvestmentReportModule' }
-    };
-    
-    const config = modules[moduleName];
-    if (!config) {
-        showError('Module not found: ' + moduleName);
-        hideLoading();
-        return;
+function showLoadingModal(message = 'Loading...') {
+  let modal = document.getElementById('contentLoadingModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'contentLoadingModal';
+    modal.className = 'content-loading-modal';
+    document.body.appendChild(modal);
+  }
+  
+  modal.innerHTML = `
+    <div class="loading-modal-content">
+      <div class="loading-spinner"></div>
+      <p>${message}</p>
+    </div>
+  `;
+  modal.style.display = 'flex';
+}
+
+function hideLoadingModal() {
+  const modal = document.getElementById('contentLoadingModal');
+  if (modal) modal.style.display = 'none';
+}
+
+// ============================================
+// MODULE LOADING - Original Approach
+// ============================================
+
+function loadContent(module) {
+  // Don't reload if already on this module
+  if (currentModule === module) return;
+  
+  showLoadingModal('Loading...');
+  currentModule = module;
+  
+  // Update active menu item
+  updateActiveMenuItem(module);
+
+  // Modules that load via server
+  const serverModules = {
+    'paymentVoucher': { 
+      fn: 'getPVFormHTML', 
+      initFn: 'initPVModule'
+    },
+    'inventoryAdd': { 
+      fn: 'getAddInventoryHTML', 
+      initFn: 'initInventoryModule'
+    },
+    'inventoryReport': { 
+      fn: 'getInventoryReportHTML', 
+      initFn: 'initInventoryReportModule'
+    },
+    'addAsset': { 
+      fn: 'getAddAssetHTML', 
+      initFn: 'initAssetModule'
+    },
+    'viewAssetRegister': { 
+      fn: 'getAssetRegisterHTML', 
+      initFn: 'initAssetRegisterModule'
+    },
+    'investmentAdd': { 
+      fn: 'getInvestmentAddHTML', 
+      initFn: 'initInvestmentModule'
+    },
+    'investmentReport': { 
+      fn: 'getInvestmentReportHTML', 
+      initFn: 'initInvestmentReportModule'
     }
+  };
+
+  // Check if module loads via server
+  if (serverModules[module]) {
+    const config = serverModules[module];
     
-    try {
-        const response = await fetch(config.file);
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        const html = await response.text();
+    // Add timeout to prevent infinite loading
+    const timeoutId = setTimeout(() => {
+      console.error('Module loading timeout for:', module);
+      showErrorContent('Module took too long to load. Please try again.');
+      hideLoadingModal();
+    }, 10000);
+
+    google.script.run
+      .withSuccessHandler(function(htmlContent) {
+        clearTimeout(timeoutId);
         
-        const mainContent = document.getElementById('mainContent');
-        if (mainContent) {
-            mainContent.innerHTML = `<div class="content-wrapper">${html}</div>`;
+        if (!htmlContent) {
+          console.error('No HTML content returned for module:', module);
+          showErrorContent('Module returned empty content.');
+          hideLoadingModal();
+          closeSidebarMobile();
+          return;
         }
+
+        document.getElementById('mainContent').innerHTML = '<div class="content-wrapper">' + htmlContent + '</div>';
         
-        // Initialize module scripts after DOM is updated
         setTimeout(() => {
-            if (window[config.init] && typeof window[config.init] === 'function') {
-                try {
-                    window[config.init]();
-                    console.log(`${moduleName} module initialized successfully`);
-                } catch (err) {
-                    console.error(`Error initializing ${moduleName}:`, err);
-                }
+          try {
+            if (window[config.initFn] && typeof window[config.initFn] === 'function') {
+              window[config.initFn]();
             }
-            hideLoading();
-        }, 150);
+          } catch (error) {
+            console.error('Error initializing module:', error);
+          }
+          hideLoadingModal();
+        }, 200);
         
         closeSidebarMobile();
-        
-    } catch (error) {
+      })
+      .withFailureHandler(function(error) {
+        clearTimeout(timeoutId);
         console.error('Error loading module:', error);
-        showError('Could not load module. Please try again.');
-        hideLoading();
-    }
+        showErrorContent('Could not load module. Please try again.');
+        hideLoadingModal();
+        closeSidebarMobile();
+      })[config.fn]();
+    
+    return;
+  }
+
+  // Direct content generation for other modules
+  const contentMap = {
+    'dashboard': generateDashboardContent,
+    'disposeAsset': generateDisposeAssetContent
+  };
+
+  const content = contentMap[module] 
+    ? contentMap[module]() 
+    : '<div class="welcome-card"><i class="fas fa-tools welcome-icon"></i><h2>Module Under Construction</h2><p>This feature is coming soon!</p></div>';
+
+  document.getElementById('mainContent').innerHTML = '<div class="content-wrapper">' + content + '</div>';
+  hideLoadingModal();
+  closeSidebarMobile();
 }
 
 function updateActiveMenuItem(moduleName) {
-    // Remove active class from all menu items
+  // Remove active class from all menu items
+  document.querySelectorAll('.menu-item').forEach(item => {
+    item.classList.remove('active');
+  });
+  
+  // Map module names to menu item onclick functions
+  const moduleMap = {
+    'dashboard': 'dashboard',
+    'paymentVoucher': 'paymentVoucher',
+    'inventoryAdd': 'inventoryAdd',
+    'inventoryReport': 'inventoryReport',
+    'addAsset': 'addAsset',
+    'viewAssetRegister': 'viewAssetRegister',
+    'investmentAdd': 'investmentAdd',
+    'investmentReport': 'investmentReport'
+  };
+  
+  // Find and activate the corresponding menu item
+  const targetModule = moduleMap[moduleName];
+  if (targetModule) {
     document.querySelectorAll('.menu-item').forEach(item => {
-        item.classList.remove('active');
+      const onclickAttr = item.getAttribute('onclick');
+      if (onclickAttr && onclickAttr.includes(`'${targetModule}'`)) {
+        item.classList.add('active');
+      }
     });
-    
-    // Map module names to menu item onclick functions
-    const moduleMap = {
-        'dashboard': 'dashboard',
-        'paymentVoucher': 'paymentVoucher',
-        'inventoryAdd': 'inventoryAdd',
-        'inventoryReport': 'inventoryReport',
-        'addAsset': 'addAsset',
-        'viewAssetRegister': 'viewAssetRegister',
-        'investmentAdd': 'investmentAdd',
-        'investmentReport': 'investmentReport'
-    };
-    
-    // Find and activate the corresponding menu item
-    const targetModule = moduleMap[moduleName];
-    if (targetModule) {
-        document.querySelectorAll('.menu-item').forEach(item => {
-            const onclickAttr = item.getAttribute('onclick');
-            if (onclickAttr && onclickAttr.includes(`'${targetModule}'`)) {
-                item.classList.add('active');
-            }
-        });
-    }
+  }
 }
 
 // ============================================
-// UTILITY FUNCTIONS
+// CONTENT GENERATORS
 // ============================================
 
-function formatCurrency(value) {
-    if (value === null || value === undefined || value === '') return '0.00';
-    const numValue = parseFloat(value);
-    if (isNaN(numValue)) return '0.00';
-    return numValue.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    });
+function generateDashboardContent() {
+  const userName = currentUser ? (currentUser.name || currentUser.email || 'User') : 'User';
+  return `
+    <div class="dashboard-container">
+      <div class="welcome-card">
+        <i class="fas fa-chart-line welcome-icon"></i>
+        <h2>Welcome to Accounts Workspace</h2>
+        <p id="dashboardWelcomeMessage">Welcome back, <strong>${userName}</strong>! Select a module from the sidebar to begin managing your accounts.</p>
+      </div>
+      <div class="module-quick-links">
+        <h3><i class="fas fa-rocket"></i> Quick Access</h3>
+        <div class="quick-links-grid">
+          <div class="quick-link-card" onclick="loadContent('paymentVoucher')">
+            <i class="fas fa-file-invoice-dollar"></i>
+            <h4>Payment Voucher</h4>
+            <p>Create and manage payment vouchers</p>
+          </div>
+          <div class="quick-link-card" onclick="loadContent('inventoryAdd')">
+            <i class="fas fa-boxes"></i>
+            <h4>Add Inventory</h4>
+            <p>Add new inventory items</p>
+          </div>
+          <div class="quick-link-card" onclick="loadContent('inventoryReport')">
+            <i class="fas fa-chart-bar"></i>
+            <h4>Inventory Report</h4>
+            <p>View inventory reports</p>
+          </div>
+          <div class="quick-link-card" onclick="loadContent('addAsset')">
+            <i class="fas fa-building"></i>
+            <h4>Add Asset</h4>
+            <p>Add new fixed assets</p>
+          </div>
+          <div class="quick-link-card" onclick="loadContent('viewAssetRegister')">
+            <i class="fas fa-list"></i>
+            <h4>Asset Register</h4>
+            <p>View asset register</p>
+          </div>
+          <div class="quick-link-card" onclick="loadContent('investmentAdd')">
+            <i class="fas fa-chart-line"></i>
+            <h4>Add Investment</h4>
+            <p>Add new investments</p>
+          </div>
+          <div class="quick-link-card" onclick="loadContent('investmentReport')">
+            <i class="fas fa-file-alt"></i>
+            <h4>Investment Report</h4>
+            <p>View investment reports</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
-function formatDate(dateString) {
-    if (!dateString) return '';
-    try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
-    } catch (e) {
-        return dateString;
-    }
-}
-
-function formatDateForInput(date) {
-    if (!date) return '';
-    const d = new Date(date);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-}
-
-function getToday() {
-    return formatDateForInput(new Date());
-}
-
-function getStartOfYear() {
-    const today = new Date();
-    const startOfYear = new Date(today.getFullYear(), 0, 1);
-    return formatDateForInput(startOfYear);
-}
-
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
-function capitalize(str) {
-    if (!str) return '';
-    return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-function generateId(prefix = 'id') {
-    return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+function generateDisposeAssetContent() {
+  return '<div class="welcome-card"><i class="fas fa-trash-alt welcome-icon"></i><h2>Dispose Asset</h2><p>Module under construction</p></div>';
 }
 
 // ============================================
-// DASHBOARD FUNCTIONS
+// HELPER FUNCTIONS
 // ============================================
 
-function initDashboard() {
-    console.log('Dashboard initialized');
-    // Update welcome message with user name if available
-    const welcomeMsg = document.getElementById('dashboardWelcomeMessage');
-    if (welcomeMsg && currentUser) {
-        const userName = currentUser.name || currentUser.email || 'User';
-        welcomeMsg.innerHTML = `Welcome back, <strong>${userName}</strong>! Select a module from the sidebar to begin managing your accounts.`;
-    }
+function showErrorContent(message) {
+  document.getElementById('mainContent').innerHTML = '<div class="content-wrapper"><div class="welcome-card"><i class="fas fa-exclamation-circle welcome-icon"></i><h2>Error Loading Form</h2><p>' + message + '</p></div></div>';
+}
+
+function closeSidebarMobile() {
+  if (window.innerWidth <= 768) {
+    document.getElementById('sidebar').classList.remove('show-mobile');
+  }
 }
 
 // ============================================
-// PLACEHOLDER FUNCTIONS FOR MODULES
+// MODULE INITIALIZERS (Placeholders)
 // ============================================
 
 function initPVModule() {
-    console.log('Payment Voucher module loaded - calling initPVModule');
-    // Will be overridden by pv.js after it loads
-    if (window.initPVModule && typeof window.initPVModule === 'function') {
-        // Call the real initPVModule from pv.js
-    }
+  console.log('Payment Voucher module loaded');
 }
 
 function initInventoryModule() {
-    console.log('Inventory module loaded');
-    // Will be overridden by inventory.js
+  console.log('Inventory module loaded');
 }
 
 function initInventoryReportModule() {
-    console.log('Inventory Report module loaded');
-    // Will be overridden by inventory-report.js
+  console.log('Inventory Report module loaded');
 }
 
 function initAssetModule() {
-    console.log('Asset module loaded');
-    // Will be overridden by assets.js
+  console.log('Asset module loaded');
 }
 
 function initAssetRegisterModule() {
-    console.log('Asset Register module loaded');
-    // Will be overridden by asset-register.js
+  console.log('Asset Register module loaded');
 }
 
 function initInvestmentModule() {
-    console.log('Investment module loaded');
-    // Will be overridden by investments.js
+  console.log('Investment module loaded');
 }
 
 function initInvestmentReportModule() {
-    console.log('Investment Report module loaded');
-    // Will be overridden by investment-report.js
+  console.log('Investment Report module loaded');
 }
 
 // ============================================
@@ -572,53 +487,35 @@ function initInvestmentReportModule() {
 // ============================================
 
 function showProfile() {
-    showToast('Profile feature coming soon', 'info');
+  alert('Profile feature coming soon');
 }
 
 function showSettings() {
-    showToast('Settings feature coming soon', 'info');
+  alert('Settings feature coming soon');
 }
 
 function logout() {
-    if (confirm('Are you sure you want to logout?')) {
-        // Clear any stored session data
-        currentUser = null;
-        showSuccess('Logged out successfully');
-        // Reload to reset state
-        window.location.reload();
-    }
+  if (confirm('Are you sure you want to logout?')) {
+    currentUser = null;
+    alert('Logged out successfully');
+    window.location.reload();
+  }
 }
 
 // ============================================
-// EXPORT FOR MODULES - CRITICAL FOR PV MODULE
+// EXPORT FOR MODULES
 // ============================================
 
 // Make functions available globally
-window.loadModule = loadModule;
+window.loadContent = loadContent;
 window.toggleSidebar = toggleSidebar;
 window.toggleUserMenu = toggleUserMenu;
 window.toggleSubmenu = toggleSubmenu;
-window.showLoading = showLoading;
-window.hideLoading = hideLoading;
-window.showToast = showToast;
-window.showError = showError;
-window.showSuccess = showSuccess;
-window.formatCurrency = formatCurrency;
-window.formatDate = formatDate;
-window.formatDateForInput = formatDateForInput;
-window.getToday = getToday;
-window.getStartOfYear = getStartOfYear;
-window.debounce = debounce;
-window.capitalize = capitalize;
+window.showLoadingModal = showLoadingModal;
+window.hideLoadingModal = hideLoadingModal;
 window.showProfile = showProfile;
 window.showSettings = showSettings;
 window.logout = logout;
-
-// Make API available globally for modules
-window.API = API;
-
-// Module initializers
-window.initDashboard = initDashboard;
 window.initPVModule = initPVModule;
 window.initInventoryModule = initInventoryModule;
 window.initInventoryReportModule = initInventoryReportModule;
@@ -626,3 +523,146 @@ window.initAssetModule = initAssetModule;
 window.initAssetRegisterModule = initAssetRegisterModule;
 window.initInvestmentModule = initInvestmentModule;
 window.initInvestmentReportModule = initInvestmentReportModule;
+
+// ============================================
+// ADD CSS FOR LOADING MODAL
+// ============================================
+
+const homepageLoadingStyle = document.createElement('style');
+homepageLoadingStyle.textContent = `
+  .content-loading-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+  }
+
+  .loading-modal-content {
+    background: white;
+    padding: 40px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    min-width: 150px;
+  }
+
+  .loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #4361ee;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 15px auto;
+  }
+
+  .loading-modal-content p {
+    color: #2d3748;
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  /* Dashboard Quick Links */
+  .dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .module-quick-links {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    margin-top: 30px;
+  }
+
+  .module-quick-links h3 {
+    color: #2d3748;
+    font-size: 18px;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .module-quick-links h3 i {
+    color: #4361ee;
+  }
+
+  .quick-links-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+  }
+
+  .quick-link-card {
+    background: #f8fafc;
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 1px solid #e2e8f0;
+  }
+
+  .quick-link-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    border-color: #4361ee;
+    background: white;
+  }
+
+  .quick-link-card i {
+    font-size: 32px;
+    color: #4361ee;
+    margin-bottom: 12px;
+    display: inline-block;
+  }
+
+  .quick-link-card h4 {
+    color: #2d3748;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .quick-link-card p {
+    color: #6c757d;
+    font-size: 13px;
+    line-height: 1.4;
+    margin: 0;
+  }
+
+  @media (max-width: 768px) {
+    .quick-links-grid {
+      grid-template-columns: 1fr;
+      gap: 15px;
+    }
+    
+    .quick-link-card {
+      padding: 15px;
+    }
+    
+    .quick-link-card i {
+      font-size: 28px;
+    }
+    
+    .module-quick-links {
+      padding: 20px;
+    }
+  }
+`;
+document.head.appendChild(homepageLoadingStyle);
