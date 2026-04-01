@@ -76,7 +76,7 @@ const printUtils = {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>${title}</title>
+        <title>${this.escapeHtml(title)}</title>
         <meta charset="UTF-8">
         <style>
           * {
@@ -108,12 +108,6 @@ const printUtils = {
             margin-bottom: 8px;
             font-weight: 600;
             letter-spacing: 1px;
-          }
-          
-          .print-report-header .subtitle {
-            font-size: 11px;
-            color: #6c757d;
-            margin-top: 5px;
           }
           
           .print-report-header .date-info {
@@ -218,16 +212,6 @@ const printUtils = {
             overflow-x: auto;
           }
           
-          /* Footer */
-          .print-footer {
-            margin-top: 25px;
-            text-align: center;
-            font-size: 9px;
-            color: #a0aec0;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 12px;
-          }
-          
           /* Print-specific adjustments */
           @media print {
             body {
@@ -266,7 +250,6 @@ const printUtils = {
       <body>
         <div class="print-report-header">
           <h1>${this.escapeHtml(title)}</h1>
-          <div class="subtitle">Accounts Workspace Management System</div>
           <div class="date-info">
             ${dateInfo ? `<div>${this.escapeHtml(dateInfo)}</div>` : ''}
             <div>Printed on: ${dateTime.date} at ${dateTime.time}</div>
@@ -274,11 +257,6 @@ const printUtils = {
         </div>
         
         ${this.convertTableToHtml(tableClone, 'print-table')}
-        
-        <div class="print-footer">
-          <p>This is a computer-generated document. No signature required.</p>
-          <p>Accounts Workspace - ${this.escapeHtml(options.footer || 'Management System')}</p>
-        </div>
       </body>
       </html>
     `;
@@ -435,15 +413,6 @@ const printUtils = {
             color: #118d57 !important;
           }
           
-          .print-footer {
-            margin-top: 25px;
-            text-align: center;
-            font-size: 9px;
-            color: #a0aec0;
-            border-top: 1px solid #e2e8f0;
-            padding-top: 12px;
-          }
-          
           @media print {
             body {
               padding: 10mm;
@@ -458,7 +427,6 @@ const printUtils = {
       <body>
         <div class="print-report-header">
           <h1>${this.escapeHtml(title)}</h1>
-          <div class="subtitle">Accounts Workspace Management System</div>
           <div class="date-info">
             ${dateInfo ? `<div>${this.escapeHtml(dateInfo)}</div>` : ''}
             <div>Printed on: ${dateTime.date} at ${dateTime.time}</div>
@@ -466,11 +434,6 @@ const printUtils = {
         </div>
         
         ${content.innerHTML}
-        
-        <div class="print-footer">
-          <p>This is a computer-generated document. No signature required.</p>
-          <p>Accounts Workspace - Investment Management System</p>
-        </div>
       </body>
       </html>
     `;
@@ -530,7 +493,7 @@ const printUtils = {
       }
     }
 
-    this.printTable(tableId, title, dateInfo, { footer: 'Inventory Management System' });
+    this.printTable(tableId, title, dateInfo);
   },
 
   // Print asset register
@@ -539,13 +502,13 @@ const printUtils = {
       const title = 'DETAILED ASSET REGISTER';
       const asAtDate = document.getElementById('detailedToDate')?.value || '';
       const dateInfo = asAtDate ? `As at: ${asAtDate}` : '';
-      this.printTable('detailedRegisterTable', title, dateInfo, { footer: 'Fixed Assets Management System' });
+      this.printTable('detailedRegisterTable', title, dateInfo);
     } else if (tabName === 'summaryRegister') {
       const title = 'SUMMARY ASSET REGISTER';
       const fromDate = document.getElementById('summaryFromDate')?.value || '';
       const toDate = document.getElementById('summaryToDate')?.value || '';
       const dateInfo = (fromDate && toDate) ? `Period: ${fromDate} to ${toDate}` : '';
-      this.printTable('summaryRegisterTable', title, dateInfo, { footer: 'Fixed Assets Management System' });
+      this.printTable('summaryRegisterTable', title, dateInfo);
     }
   },
 
@@ -563,7 +526,7 @@ const printUtils = {
       if (fromDate && toDate) {
         dateInfo = `Period: ${fromDate} to ${toDate}`;
       }
-      this.printTable(tableId, title, dateInfo, { footer: 'Investment Management System' });
+      this.printTable(tableId, title, dateInfo);
     } else if (tabName === 'fullReport') {
       title = 'INVESTMENT FULL REPORT';
       const toDate = document.getElementById('fullReportToDate')?.value || '';
@@ -584,7 +547,7 @@ const printUtils = {
       tableId = 'maturedReportTable';
       const toDate = new Date().toISOString().split('T')[0];
       dateInfo = `As at: ${toDate}`;
-      this.printTable(tableId, title, dateInfo, { footer: 'Investment Management System' });
+      this.printTable(tableId, title, dateInfo);
     }
   }
 };
