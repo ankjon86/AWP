@@ -1,8 +1,3 @@
-/* ============================================
-   ACCOUNTS WORKSPACE - API MODULE
-   All API calls to Google Apps Script backend
-   ============================================ */
-
 class ApiService {
   constructor() {
     // UPDATE THIS with your Google Apps Script Web App URL
