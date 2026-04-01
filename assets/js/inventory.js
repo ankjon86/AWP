@@ -891,21 +891,3 @@ window.closeInventoryModal = closeInventoryModal;
 window.printReport = printReport;
 
 
-
-// Export functions for global use
-window.initInventoryModule = initInventoryModule;
-window.initInventoryReportModule = initInventoryReportModule;
-window.handleNewCategoryChange = handleNewCategoryChange;
-window.calculateUnitPrice = calculateUnitPrice;
-window.submitNewInventory = submitNewInventory;
-window.switchInventoryTab = switchInventoryTab;
-window.loadPurchaseReport = loadPurchaseReport;
-window.loadUsageReport = loadUsageReport;
-window.loadInventoryList = loadInventoryList;
-window.openInventoryActionDropdown = openInventoryActionDropdown;
-window.openUsageModal = openUsageModal;
-window.closeUsageModal = closeUsageModal;
-window.submitUsageRecord = submitUsageRecord;
-window.removeInventoryItem = removeInventoryItem;
-window.closeInventoryModal = closeInventoryModal;
-window.printReport = printReport;
