@@ -259,7 +259,10 @@ function loadPurchaseReport() {
   const fromDateInput = document.getElementById('purchaseFromDate');
   const toDateInput = document.getElementById('purchaseToDate');
   
-  if (!fromDateInput || !toDateInput) return;
+  if (!fromDateInput || !toDateInput) {
+    console.error('Date input elements not found');
+    return;
+  }
 
   const fromDate = fromDateInput.value;
   const toDate = toDateInput.value;
@@ -269,23 +272,31 @@ function loadPurchaseReport() {
     return;
   }
 
+  console.log('Loading purchase report - From:', fromDate, 'To:', toDate);
   showInventoryLoadingSpinner('purchaseTableBody', 7);
   
+  // Use the correct API call with date parameters
   callGAS('getPurchaseReportData', { fromDate: fromDate, toDate: toDate })
     .then(response => {
+      console.log('Purchase report response:', response);
       if (response && !response.error) {
-        const filteredData = filterDataByDateRange(response, fromDate, toDate);
-        renderPurchaseReportTable(filteredData);
+        // If response is already filtered, use it directly
+        const reportData = Array.isArray(response) ? response : [];
+        renderPurchaseReportTable(reportData);
+      } else if (response && response.data && Array.isArray(response.data)) {
+        renderPurchaseReportTable(response.data);
+      } else if (Array.isArray(response)) {
+        renderPurchaseReportTable(response);
       } else {
-        showInventoryEmptyState('purchaseTableBody', 'Error loading purchase report', 7);
+        console.error('Invalid response format:', response);
+        showInventoryEmptyState('purchaseTableBody', 'No purchase records found', 7);
       }
     })
     .catch(error => {
       console.error('Error loading purchase report:', error);
-      showInventoryEmptyState('purchaseTableBody', 'Error loading purchase report', 7);
+      showInventoryEmptyState('purchaseTableBody', 'Error loading purchase report: ' + (error.message || error), 7);
     });
 }
-
 function loadUsageReport() {
   const fromDateInput = document.getElementById('usageFromDate');
   const toDateInput = document.getElementById('usageToDate');
