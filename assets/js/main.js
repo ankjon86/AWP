@@ -1,3 +1,8 @@
+/* ============================================
+   ACCOUNTS WORKSPACE - MAIN JAVASCRIPT
+   Maintains original Google Apps Script logic approach
+   ============================================ */
+
 // Global Variables
 let currentOpenSubmenu = null;
 let sidebarCollapsed = false;
@@ -9,73 +14,131 @@ let currentModule = 'dashboard';
 // ============================================
 
 // Create a wrapper that mimics google.script.run for compatibility
-const google = {
+window.google = {
   script: {
-    run: {
-      withSuccessHandler: function(callback) {
-        return {
-          withFailureHandler: function(errorCallback) {
-            return {
-              [actionName]: function(...args) {
-                // Map the action to API methods
-                const actionMap = {
-                  'getUserInfo': () => API.getUserInfo(),
-                  'processForm': () => API.processForm(args[0]),
-                  'getNextPVNumber': () => API.getNextPVNumber(args[0]),
-                  'getPVNumbersByType': () => API.getPVNumbersByType(),
-                  'getVoucherByNumber': () => API.getVoucherByNumber(args[0], args[1]),
-                  'updateVoucher': () => API.updateVoucher(args[0]),
-                  'generateInventoryCategoryCode': () => API.generateInventoryCategoryCode(),
-                  'getInventoryCategories': () => API.getInventoryCategories(),
-                  'addNewInventory': () => API.addNewInventory(args[0]),
-                  'getPurchaseReportData': () => API.getPurchaseReportData(args[0], args[1]),
-                  'getUsageReportData': () => API.getUsageReportData(args[0], args[1]),
-                  'getInventoryListData': () => API.getInventoryListData(),
-                  'recordInventoryUsage': () => API.recordInventoryUsage(args[0]),
-                  'removeInventory': () => API.removeInventory(args[0]),
-                  'generateAssetCode': () => API.generateAssetCode(args[0]),
-                  'addNewAsset': () => API.addNewAsset(args[0]),
-                  'getDetailedRegister': () => API.getDetailedRegister(),
-                  'updateAssetStatus': () => API.updateAssetStatus(args[0], args[1]),
-                  'generateInvestmentCode': () => API.generateInvestmentCode(args[0]),
-                  'addNewInvestment': () => API.addNewInvestment(args[0]),
-                  'getInvestmentsByDateRange': () => API.getInvestmentsByDateRange(args[0], args[1]),
-                  'getMaturedInvestments': () => API.getMaturedInvestments(args[0]),
-                  'getPVFormHTML': () => Promise.resolve(loadModuleFile('paymentVoucher')),
-                  'getAddInventoryHTML': () => Promise.resolve(loadModuleFile('inventoryAdd')),
-                  'getInventoryReportHTML': () => Promise.resolve(loadModuleFile('inventoryReport')),
-                  'getAddAssetHTML': () => Promise.resolve(loadModuleFile('addAsset')),
-                  'getAssetRegisterHTML': () => Promise.resolve(loadModuleFile('viewAssetRegister')),
-                  'getInvestmentAddHTML': () => Promise.resolve(loadModuleFile('investmentAdd')),
-                  'getInvestmentReportHTML': () => Promise.resolve(loadModuleFile('investmentReport'))
-                };
-                
-                const action = Object.keys(actionMap).find(key => {
-                  const fn = actionMap[key];
-                  return fn && typeof fn === 'function';
-                });
-                
-                // Get the actual function name from the call
-                const callerName = new Error().stack.split('\n')[2].match(/at (\w+)/)?.[1];
-                
-                const apiCall = actionMap[callerName];
-                if (apiCall) {
-                  apiCall()
-                    .then(response => {
-                      if (callback) callback(response);
-                    })
-                    .catch(error => {
-                      if (errorCallback) errorCallback(error);
-                    });
+    run: (function() {
+      // Store the current success and failure handlers
+      let currentSuccessHandler = null;
+      let currentFailureHandler = null;
+      
+      // Create the chainable object
+      const chainable = {
+        withSuccessHandler: function(callback) {
+          currentSuccessHandler = callback;
+          return chainable;
+        },
+        withFailureHandler: function(callback) {
+          currentFailureHandler = callback;
+          return chainable;
+        }
+      };
+      
+      // Add dynamic methods for all API actions
+      const actions = [
+        'getUserInfo',
+        'processForm',
+        'getNextPVNumber',
+        'getPVNumbersByType',
+        'getVoucherByNumber',
+        'updateVoucher',
+        'generateInventoryCategoryCode',
+        'getInventoryCategories',
+        'addNewInventory',
+        'getPurchaseReportData',
+        'getUsageReportData',
+        'getInventoryListData',
+        'recordInventoryUsage',
+        'removeInventory',
+        'generateAssetCode',
+        'addNewAsset',
+        'getDetailedRegister',
+        'updateAssetStatus',
+        'generateInvestmentCode',
+        'addNewInvestment',
+        'getInvestmentsByDateRange',
+        'getMaturedInvestments',
+        'getPVFormHTML',
+        'getAddInventoryHTML',
+        'getInventoryReportHTML',
+        'getAddAssetHTML',
+        'getAssetRegisterHTML',
+        'getInvestmentAddHTML',
+        'getInvestmentReportHTML'
+      ];
+      
+      actions.forEach(action => {
+        chainable[action] = function(...args) {
+          // Map the action to API methods
+          const actionMap = {
+            // User
+            'getUserInfo': () => API.getUserInfo(),
+            
+            // Payment Voucher
+            'processForm': () => API.processForm(args[0]),
+            'getNextPVNumber': () => API.getNextPVNumber(args[0]),
+            'getPVNumbersByType': () => API.getPVNumbersByType(),
+            'getVoucherByNumber': () => API.getVoucherByNumber(args[0], args[1]),
+            'updateVoucher': () => API.updateVoucher(args[0]),
+            
+            // Inventory
+            'generateInventoryCategoryCode': () => API.generateInventoryCategoryCode(),
+            'getInventoryCategories': () => API.getInventoryCategories(),
+            'addNewInventory': () => API.addNewInventory(args[0]),
+            'getPurchaseReportData': () => API.getPurchaseReportData(args[0], args[1]),
+            'getUsageReportData': () => API.getUsageReportData(args[0], args[1]),
+            'getInventoryListData': () => API.getInventoryListData(),
+            'recordInventoryUsage': () => API.recordInventoryUsage(args[0]),
+            'removeInventory': () => API.removeInventory(args[0]),
+            
+            // Fixed Assets
+            'generateAssetCode': () => API.generateAssetCode(args[0]),
+            'addNewAsset': () => API.addNewAsset(args[0]),
+            'getDetailedRegister': () => API.getDetailedRegister(),
+            'updateAssetStatus': () => API.updateAssetStatus(args[0], args[1]),
+            
+            // Investment
+            'generateInvestmentCode': () => API.generateInvestmentCode(args[0]),
+            'addNewInvestment': () => API.addNewInvestment(args[0]),
+            'getInvestmentsByDateRange': () => API.getInvestmentsByDateRange(args[0], args[1]),
+            'getMaturedInvestments': () => API.getMaturedInvestments(args[0]),
+            
+            // HTML Module Loaders
+            'getPVFormHTML': () => loadModuleFile('paymentVoucher'),
+            'getAddInventoryHTML': () => loadModuleFile('inventoryAdd'),
+            'getInventoryReportHTML': () => loadModuleFile('inventoryReport'),
+            'getAddAssetHTML': () => loadModuleFile('addAsset'),
+            'getAssetRegisterHTML': () => loadModuleFile('viewAssetRegister'),
+            'getInvestmentAddHTML': () => loadModuleFile('investmentAdd'),
+            'getInvestmentReportHTML': () => loadModuleFile('investmentReport')
+          };
+          
+          const apiCall = actionMap[action];
+          if (apiCall) {
+            apiCall()
+              .then(response => {
+                if (currentSuccessHandler) {
+                  currentSuccessHandler(response);
                 }
-                
-                return this;
-              }
-            };
+              })
+              .catch(error => {
+                if (currentFailureHandler) {
+                  currentFailureHandler(error);
+                } else {
+                  console.error('API call failed:', error);
+                }
+              });
+          } else {
+            console.error('Unknown action:', action);
+            if (currentFailureHandler) {
+              currentFailureHandler(new Error(`Unknown action: ${action}`));
+            }
           }
+          return chainable;
         };
-      }
-    }
+      });
+      
+      return chainable;
+    })()
   }
 };
 
@@ -93,15 +156,15 @@ async function loadModuleFile(moduleName) {
   
   try {
     const response = await fetch(modules[moduleName]);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
     return await response.text();
   } catch (error) {
     console.error('Error loading module file:', error);
-    return '';
+    return '<div class="welcome-card"><i class="fas fa-exclamation-circle welcome-icon"></i><h2>Error Loading Module</h2><p>Could not load module. Please try again.</p></div>';
   }
 }
-
-// Make google.script.run available globally
-window.google = google;
 
 // ============================================
 // INITIALIZATION
@@ -524,8 +587,11 @@ window.initAssetRegisterModule = initAssetRegisterModule;
 window.initInvestmentModule = initInvestmentModule;
 window.initInvestmentReportModule = initInvestmentReportModule;
 
+// Make loadContent available for quick links
+window.loadContent = loadContent;
+
 // ============================================
-// ADD CSS FOR LOADING MODAL
+// ADD CSS FOR LOADING MODAL AND DASHBOARD
 // ============================================
 
 const homepageLoadingStyle = document.createElement('style');
