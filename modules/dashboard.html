@@ -32,9 +32,9 @@
     </div>
 
     <!-- Low Stock Alert -->
-    <div class="alert-card danger" id="lowStockAlert" style="display: none;">
+    <div class="alert-card warning" id="lowStockAlert" style="display: none;">
       <div class="alert-icon">
-        <i class="fas fa-exclamation-triangle"></i>
+        <i class="fas fa-boxes"></i>
       </div>
       <div class="alert-content">
         <div class="alert-title">Low Stock Alert</div>
@@ -65,39 +65,11 @@
       <p>All clear! No pending alerts.</p>
     </div>
   </div>
-
-  <!-- Stats Cards -->
-  <div class="dashboard-stats">
-    <div class="stat-card" onclick="loadModule('paymentVoucher')">
-      <i class="fas fa-file-invoice-dollar"></i>
-      <h3>Total Vouchers</h3>
-      <div class="stat-value" id="totalVouchers">-</div>
-      <small>This month</small>
-    </div>
-    <div class="stat-card" onclick="loadModule('inventoryReport')">
-      <i class="fas fa-boxes"></i>
-      <h3>Inventory Items</h3>
-      <div class="stat-value" id="totalInventoryItems">-</div>
-      <small>Active items</small>
-    </div>
-    <div class="stat-card" onclick="loadModule('viewAssetRegister')">
-      <i class="fas fa-building"></i>
-      <h3>Fixed Assets</h3>
-      <div class="stat-value" id="totalAssets">-</div>
-      <small>Total assets</small>
-    </div>
-    <div class="stat-card" onclick="loadModule('investmentReport')">
-      <i class="fas fa-chart-line"></i>
-      <h3>Active Investments</h3>
-      <div class="stat-value" id="totalInvestments">-</div>
-      <small>Current value</small>
-    </div>
-  </div>
 </div>
 
 <style>
   .dashboard-container {
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 0 auto;
   }
 
@@ -106,7 +78,6 @@
     background: white;
     border-radius: 12px;
     padding: 20px;
-    margin-bottom: 25px;
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   }
 
@@ -154,6 +125,8 @@
 
   .alert-icon {
     font-size: 28px;
+    min-width: 50px;
+    text-align: center;
   }
 
   .alert-card .alert-icon i {
@@ -229,84 +202,18 @@
 
   .no-alerts {
     text-align: center;
-    padding: 30px;
+    padding: 40px;
     color: #a0aec0;
   }
 
   .no-alerts i {
     font-size: 48px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     color: #cbd5e0;
   }
 
   .no-alerts p {
     font-size: 14px;
-  }
-
-  /* Stats Cards */
-  .dashboard-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 15px;
-  }
-
-  .stat-card {
-    background: white;
-    padding: 18px;
-    border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    transition: all 0.2s;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .stat-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 3px;
-    background: linear-gradient(90deg, #4361ee, #7209b7);
-    transform: translateX(-100%);
-    transition: transform 0.3s;
-  }
-
-  .stat-card:hover::before {
-    transform: translateX(0);
-  }
-
-  .stat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  }
-
-  .stat-card i {
-    font-size: 28px;
-    color: #4361ee;
-    margin-bottom: 10px;
-  }
-
-  .stat-card h3 {
-    font-size: 11px;
-    color: #6c757d;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .stat-value {
-    font-size: 24px;
-    font-weight: bold;
-    color: #2d3748;
-  }
-
-  .stat-card small {
-    font-size: 10px;
-    color: #a0aec0;
-    display: block;
-    margin-top: 5px;
   }
 
   @media (max-width: 768px) {
@@ -326,25 +233,6 @@
 
     .alert-btn {
       width: 100%;
-    }
-
-    .dashboard-stats {
-      grid-template-columns: repeat(2, 1fr);
-      gap: 12px;
-    }
-
-    .stat-card {
-      padding: 15px;
-    }
-
-    .stat-value {
-      font-size: 20px;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .dashboard-stats {
-      grid-template-columns: 1fr;
     }
   }
 </style>
