@@ -767,6 +767,15 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
+// Print functions for assets
+window.printAssetDetailed = function() {
+  printUtils.printAssetRegister('detailedRegister');
+};
+
+window.printAssetSummary = function() {
+  printUtils.printAssetRegister('summaryRegister');
+};
+
 // Export functions for global use
 window.initAssetModule = initAssetModule;
 window.initAssetRegisterModule = initAssetRegisterModule;
