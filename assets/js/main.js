@@ -121,10 +121,9 @@ window.google = {
                 }
               })
               .catch(error => {
+                console.error(`API call failed for ${action}:`, error);
                 if (currentFailureHandler) {
                   currentFailureHandler(error);
-                } else {
-                  console.error('API call failed:', error);
                 }
               });
           } else {
@@ -299,8 +298,13 @@ function hideLoadingModal() {
 }
 
 // ============================================
-// MODULE LOADING - Original Approach
+// MODULE LOADING - Supports both loadModule and loadContent
 // ============================================
+
+// Main function for loading modules (called from sidebar)
+function loadModule(moduleName) {
+  loadContent(moduleName);
+}
 
 function loadContent(module) {
   // Don't reload if already on this module
@@ -454,37 +458,37 @@ function generateDashboardContent() {
       <div class="module-quick-links">
         <h3><i class="fas fa-rocket"></i> Quick Access</h3>
         <div class="quick-links-grid">
-          <div class="quick-link-card" onclick="loadContent('paymentVoucher')">
+          <div class="quick-link-card" onclick="loadModule('paymentVoucher')">
             <i class="fas fa-file-invoice-dollar"></i>
             <h4>Payment Voucher</h4>
             <p>Create and manage payment vouchers</p>
           </div>
-          <div class="quick-link-card" onclick="loadContent('inventoryAdd')">
+          <div class="quick-link-card" onclick="loadModule('inventoryAdd')">
             <i class="fas fa-boxes"></i>
             <h4>Add Inventory</h4>
             <p>Add new inventory items</p>
           </div>
-          <div class="quick-link-card" onclick="loadContent('inventoryReport')">
+          <div class="quick-link-card" onclick="loadModule('inventoryReport')">
             <i class="fas fa-chart-bar"></i>
             <h4>Inventory Report</h4>
             <p>View inventory reports</p>
           </div>
-          <div class="quick-link-card" onclick="loadContent('addAsset')">
+          <div class="quick-link-card" onclick="loadModule('addAsset')">
             <i class="fas fa-building"></i>
             <h4>Add Asset</h4>
             <p>Add new fixed assets</p>
           </div>
-          <div class="quick-link-card" onclick="loadContent('viewAssetRegister')">
+          <div class="quick-link-card" onclick="loadModule('viewAssetRegister')">
             <i class="fas fa-list"></i>
             <h4>Asset Register</h4>
             <p>View asset register</p>
           </div>
-          <div class="quick-link-card" onclick="loadContent('investmentAdd')">
+          <div class="quick-link-card" onclick="loadModule('investmentAdd')">
             <i class="fas fa-chart-line"></i>
             <h4>Add Investment</h4>
             <p>Add new investments</p>
           </div>
-          <div class="quick-link-card" onclick="loadContent('investmentReport')">
+          <div class="quick-link-card" onclick="loadModule('investmentReport')">
             <i class="fas fa-file-alt"></i>
             <h4>Investment Report</h4>
             <p>View investment reports</p>
@@ -570,6 +574,7 @@ function logout() {
 // ============================================
 
 // Make functions available globally
+window.loadModule = loadModule;
 window.loadContent = loadContent;
 window.toggleSidebar = toggleSidebar;
 window.toggleUserMenu = toggleUserMenu;
@@ -586,9 +591,6 @@ window.initAssetModule = initAssetModule;
 window.initAssetRegisterModule = initAssetRegisterModule;
 window.initInvestmentModule = initInvestmentModule;
 window.initInvestmentReportModule = initInvestmentReportModule;
-
-// Make loadContent available for quick links
-window.loadContent = loadContent;
 
 // ============================================
 // ADD CSS FOR LOADING MODAL AND DASHBOARD
