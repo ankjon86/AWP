@@ -1,3 +1,7 @@
+/* ============================================
+   INVENTORY MODULE JAVASCRIPT
+   ============================================ */
+
 // Global variables for inventory module
 let inventoryPortalOpen = false;
 let currentUsageItem = null;
@@ -413,7 +417,7 @@ function renderUsageReportTable(data) {
         <td>${formatCurrency(row.unitCost)}</td>
         <td>${formatCurrency(usageCost)}</td>
         <td>${row.date || ''}</td>
-      </tr>
+       </tr>
     `;
   }).join('');
 
@@ -460,7 +464,7 @@ function renderInventoryListTable(data) {
             <i class="fas fa-ellipsis-v"></i> Action
           </button>
         </td>
-      </tr>
+       </tr>
     `;
   }).join('');
 
@@ -760,7 +764,7 @@ function printReport(tableId) {
     }
   }
   
-  // Fallback: use old method if needed
+  // Fallback: use direct printing if needed
   const tableWrapper = document.getElementById(tableId);
   if (!tableWrapper) {
     alert('Report data not found');
@@ -791,9 +795,9 @@ function printReport(tableId) {
   
   // Get report title
   let reportTitle = '';
-  const activeTab = document.querySelector('.tab-content.active');
-  if (activeTab) {
-    const tabId = activeTab.id;
+  const activeTabFallback = document.querySelector('.tab-content.active');
+  if (activeTabFallback) {
+    const tabId = activeTabFallback.id;
     if (tabId === 'purchaseReport') reportTitle = 'INVENTORY PURCHASE REPORT';
     else if (tabId === 'usageReport') reportTitle = 'INVENTORY USAGE REPORT';
     else if (tabId === 'inventoryList') reportTitle = 'INVENTORY LIST REPORT';
@@ -872,7 +876,10 @@ function printReport(tableId) {
   setTimeout(() => printWindow.close(), 1000);
 }
 
-// Export functions for global use
+// ============================================
+// EXPORT FUNCTIONS FOR GLOBAL USE
+// ============================================
+
 window.initInventoryModule = initInventoryModule;
 window.initInventoryReportModule = initInventoryReportModule;
 window.handleNewCategoryChange = handleNewCategoryChange;
@@ -889,5 +896,3 @@ window.submitUsageRecord = submitUsageRecord;
 window.removeInventoryItem = removeInventoryItem;
 window.closeInventoryModal = closeInventoryModal;
 window.printReport = printReport;
-
-
