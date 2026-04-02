@@ -275,27 +275,43 @@ function loadPurchaseReport() {
   console.log('Loading purchase report - From:', fromDate, 'To:', toDate);
   showInventoryLoadingSpinner('purchaseTableBody', 7);
   
-  // Use the correct API call with date parameters
-  callGAS('getPurchaseReportData', { fromDate: fromDate, toDate: toDate })
-    .then(response => {
+  // IMPORTANT: Pass parameters as direct arguments, not as an object
+  // The Apps Script function expects two parameters: fromDate, toDate
+  google.script.run
+    .withSuccessHandler(function(response) {
       console.log('Purchase report response:', response);
-      if (response && !response.error) {
-        // If response is already filtered, use it directly
-        const reportData = Array.isArray(response) ? response : [];
-        renderPurchaseReportTable(reportData);
+      hideInventoryLoadingSpinner('purchaseTableBody');
+      
+      // Check if response has error
+      if (response && response.error) {
+        console.error('Error in response:', response.error);
+        showInventoryEmptyState('purchaseTableBody', 'Error: ' + response.error, 7);
+        return;
+      }
+      
+      // Handle response - it should be an array directly
+      let reportData = [];
+      if (Array.isArray(response)) {
+        reportData = response;
       } else if (response && response.data && Array.isArray(response.data)) {
-        renderPurchaseReportTable(response.data);
-      } else if (Array.isArray(response)) {
-        renderPurchaseReportTable(response);
+        reportData = response.data;
+      } else if (response && typeof response === 'object') {
+        // Try to extract array from object
+        reportData = Object.values(response).filter(Array.isArray)[0] || [];
+      }
+      
+      if (reportData.length === 0) {
+        showInventoryEmptyState('purchaseTableBody', 'No purchase records found for selected period', 7);
       } else {
-        console.error('Invalid response format:', response);
-        showInventoryEmptyState('purchaseTableBody', 'No purchase records found', 7);
+        renderPurchaseReportTable(reportData);
       }
     })
-    .catch(error => {
+    .withFailureHandler(function(error) {
       console.error('Error loading purchase report:', error);
+      hideInventoryLoadingSpinner('purchaseTableBody');
       showInventoryEmptyState('purchaseTableBody', 'Error loading purchase report: ' + (error.message || error), 7);
-    });
+    })
+    .getPurchaseReportData(fromDate, toDate);  // Pass as separate arguments
 }
 function loadUsageReport() {
   const fromDateInput = document.getElementById('usageFromDate');
