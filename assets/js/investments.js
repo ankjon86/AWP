@@ -311,7 +311,7 @@ function submitNewInvestment() {
 }
 
 // ============================================
-// REPORT FUNCTIONS
+// REPORT FUNCTIONS - FIXED FOR BACKDATING
 // ============================================
 
 function switchInvestmentReportTab(tabName) {
@@ -348,8 +348,6 @@ function switchInvestmentReportTab(tabName) {
     loadPurchaseReport();
   } else if (tabName === 'fullReport') {
     if (fullReportControls) fullReportControls.style.display = 'flex';
-    if (interestControls) interestControls.style.display = 'none';
-    if (maturedControls) maturedControls.style.display = 'none';
     const reportTypeSelect = document.getElementById('reportTypeSelect');
     if (reportTypeSelect) reportTypeSelect.value = '';
     const fullReportContainer = document.getElementById('fullReportContainer');
@@ -357,15 +355,9 @@ function switchInvestmentReportTab(tabName) {
       fullReportContainer.innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Please select a report type</p>';
     }
   } else if (tabName === 'interestReport') {
-    if (purchaseControls) purchaseControls.style.display = 'none';
-    if (fullReportControls) fullReportControls.style.display = 'none';
     if (interestControls) interestControls.style.display = 'flex';
-    if (maturedControls) maturedControls.style.display = 'none';
     loadInterestReport();
   } else if (tabName === 'maturedReport') {
-    if (purchaseControls) purchaseControls.style.display = 'none';
-    if (fullReportControls) fullReportControls.style.display = 'none';
-    if (interestControls) interestControls.style.display = 'none';
     if (maturedControls) maturedControls.style.display = 'flex';
     loadMaturedInvestments();
   }
@@ -375,10 +367,7 @@ function loadPurchaseReport() {
   const fromDateInput = document.getElementById('purchaseFromDate');
   const toDateInput = document.getElementById('purchaseToDate');
   
-  if (!fromDateInput || !toDateInput) {
-    console.error('Date input elements not found');
-    return;
-  }
+  if (!fromDateInput || !toDateInput) return;
 
   const fromDate = fromDateInput.value;
   const toDate = toDateInput.value;
@@ -447,10 +436,7 @@ function loadFullInvestmentReport() {
   const toDateInput = document.getElementById('fullReportToDate');
   const reportTypeSelect = document.getElementById('reportTypeSelect');
   
-  if (!toDateInput || !reportTypeSelect) {
-    console.error('Required elements not found');
-    return;
-  }
+  if (!toDateInput || !reportTypeSelect) return;
   
   const toDate = toDateInput.value;
   const reportType = reportTypeSelect.value;
@@ -465,6 +451,7 @@ function loadFullInvestmentReport() {
 
   showInvestmentLoadingSpinner('fullReportContainer');
 
+  // Use a WIDE date range to get ALL investments (10 years back and forward)
   const startDate = new Date();
   startDate.setFullYear(startDate.getFullYear() - 10);
   const endDate = new Date();
@@ -478,6 +465,7 @@ function loadFullInvestmentReport() {
       if (response && !response.error) {
         allInvestments = response;
         
+        // Filter investments active on the As At date (supports backdating)
         const asAtDate = new Date(toDate);
         asAtDate.setHours(0, 0, 0, 0);
         const activeInvestments = filterActiveInvestmentsAsAt(allInvestments, asAtDate);
@@ -505,6 +493,7 @@ function loadFullInvestmentReport() {
     });
 }
 
+// Filter investments active on a specific date (supports backdating)
 function filterActiveInvestmentsAsAt(investments, asAtDate) {
   if (!investments || !Array.isArray(investments)) return [];
   
@@ -514,10 +503,12 @@ function filterActiveInvestmentsAsAt(investments, asAtDate) {
     investmentDate.setHours(0, 0, 0, 0);
     maturityDate.setHours(0, 0, 0, 0);
     
+    // Investment was active if: started on or before As At AND matures AFTER As At
     return investmentDate <= asAtDate && maturityDate > asAtDate;
   });
 }
 
+// Calculate accrued interest up to a specific date
 function calculateAccruedToDate(amount, rate, investmentDate, maturityDate, asAtDate) {
   const investDate = new Date(investmentDate);
   const maturity = new Date(maturityDate);
@@ -553,6 +544,9 @@ function calculateDaysInRange(startDate, endDate, rangeStart, rangeEnd) {
 function renderByInvestmentType(data, toDate) {
   const container = document.getElementById('fullReportContainer');
   if (!container) return;
+
+  const toDateObj = new Date(toDate);
+  toDateObj.setHours(0, 0, 0, 0);
 
   const grouped = {};
   data.forEach(item => {
@@ -647,13 +641,8 @@ function renderByInvestmentType(data, toDate) {
               <tr class="subtotal-row">
                 <td colspan="2" style="text-align: right; font-weight: 700;">${escapeHtml(type)} Subtotal:</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
-                <td></td>
-                <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
+                <td>\n                <td>\n                <td>\n                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
+                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
               </tr>
             </tbody>
@@ -671,13 +660,8 @@ function renderByInvestmentType(data, toDate) {
             <tr class="grand-total-row">
               <td colspan="2" style="text-align: right; font-weight: 700;">Grand Total:</td>
               <td class="grand-total-cell">${formatCurrency(grandTotalAmount)}</td>
-              <td></td>
-              <td></td>
-              <td></td>
-              <td></td>
-              <td class="grand-total-cell">${formatCurrency(grandTotalInterest)}</td>
-              <td></td>
-              <td class="grand-total-cell">${formatCurrency(grandTotalMaturityAmount)}</td>
+              <td>\n              <td>\n              <td>\n              <td>\n              <td class="grand-total-cell">${formatCurrency(grandTotalInterest)}</td>
+              <td>\n              <td class="grand-total-cell">${formatCurrency(grandTotalMaturityAmount)}</td>
               <td class="grand-total-cell">${formatCurrency(grandTotalCurrentValue)}</td>
             </tr>
           </tbody>
@@ -774,13 +758,8 @@ function renderByBank(data, toDate) {
               <tr class="subtotal-row">
                 <td colspan="2" style="text-align: right; font-weight: 700;">${escapeHtml(bank)} Subtotal:</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
-                <td></td>
-                <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
+                <td>\n                <td>\n                <td>\n                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
+                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
               </tr>
             </tbody>
@@ -891,12 +870,8 @@ function renderByDuration(data, toDate) {
                 <tr class="subtotal-row">
                   <td colspan="3" style="text-align: right; font-weight: 700;">${durationRange} Subtotal:</td>
                   <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                  <td></td>
-                  <td></td>
-                  <td></td>
-                  <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
-                  <td></td>
-                  <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
+                  <td>\n                  <td>\n                  <td>\n                  <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
+                  <td>\n                  <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
                   <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
                 </tr>
               </tbody>
@@ -914,10 +889,7 @@ function loadInterestReport() {
   const fromDateInput = document.getElementById('interestFromDate');
   const toDateInput = document.getElementById('interestToDate');
   
-  if (!fromDateInput || !toDateInput) {
-    console.error('Date input elements not found');
-    return;
-  }
+  if (!fromDateInput || !toDateInput) return;
   
   const fromDate = fromDateInput.value;
   const toDate = toDateInput.value;
@@ -932,6 +904,7 @@ function loadInterestReport() {
 
   showInvestmentLoadingSpinner('interestReportContainer');
 
+  // Use a WIDE date range to get ALL investments (10 years back and forward)
   const startDate = new Date();
   startDate.setFullYear(startDate.getFullYear() - 10);
   const endDate = new Date();
@@ -969,6 +942,7 @@ function renderInterestReport(data, fromDate, toDate) {
   fromDateObj.setHours(0, 0, 0, 0);
   toDateObj.setHours(0, 0, 0, 0);
 
+  // Filter: Include investments that were active ANYTIME during the selected period
   const activeInvestments = data.filter(item => {
     const investmentDate = new Date(item.investmentDate);
     const maturityDate = new Date(item.maturityDate);
@@ -1195,6 +1169,7 @@ function openRolloverModal(investmentCode) {
   const rolloverAmount = document.getElementById('rolloverAmount');
   const rolloverRate = document.getElementById('rolloverInterestRate');
   const rolloverDuration = document.getElementById('rolloverDuration');
+  const rolloverDate = document.getElementById('rolloverInvestmentDate');
   
   if (rolloverType) rolloverType.value = investment.investmentType;
   if (rolloverBank) rolloverBank.value = investment.bankName;
@@ -1203,7 +1178,6 @@ function openRolloverModal(investmentCode) {
   if (rolloverDuration) rolloverDuration.value = investment.duration;
 
   const today = new Date().toISOString().split('T')[0];
-  const rolloverDate = document.getElementById('rolloverInvestmentDate');
   if (rolloverDate) rolloverDate.value = today;
 
   generateRolloverInvestmentCode(investment.investmentType);
@@ -1401,7 +1375,7 @@ function showInvestmentEmptyState(elementId, message, colSpan) {
           <i class="fas fa-folder-open"></i>
           <p>${message}</p>
         </td>
-      <tr>
+      </tr>
     `;
   } else {
     const container = document.getElementById(elementId);
