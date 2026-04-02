@@ -311,7 +311,7 @@ function submitNewInvestment() {
 }
 
 // ============================================
-// REPORT FUNCTIONS - FIXED FOR BACKDATING
+// REPORT FUNCTIONS
 // ============================================
 
 function switchInvestmentReportTab(tabName) {
@@ -349,11 +349,10 @@ function switchInvestmentReportTab(tabName) {
   } else if (tabName === 'fullReport') {
     if (fullReportControls) fullReportControls.style.display = 'flex';
     const reportTypeSelect = document.getElementById('reportTypeSelect');
-    if (reportTypeSelect) reportTypeSelect.value = '';
-    const fullReportContainer = document.getElementById('fullReportContainer');
-    if (fullReportContainer) {
-      fullReportContainer.innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Please select a report type</p>';
+    if (reportTypeSelect && reportTypeSelect.value === '') {
+      reportTypeSelect.value = 'byType';
     }
+    loadFullInvestmentReport();
   } else if (tabName === 'interestReport') {
     if (interestControls) interestControls.style.display = 'flex';
     loadInterestReport();
@@ -422,10 +421,6 @@ function handleReportTypeChange() {
   
   const reportType = reportTypeSelect.value;
   if (!reportType) {
-    const fullReportContainer = document.getElementById('fullReportContainer');
-    if (fullReportContainer) {
-      fullReportContainer.innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Please select a report type</p>';
-    }
     return;
   }
   currentReportType = reportType;
@@ -503,7 +498,6 @@ function filterActiveInvestmentsAsAt(investments, asAtDate) {
     investmentDate.setHours(0, 0, 0, 0);
     maturityDate.setHours(0, 0, 0, 0);
     
-    // Investment was active if: started on or before As At AND matures AFTER As At
     return investmentDate <= asAtDate && maturityDate > asAtDate;
   });
 }
@@ -541,6 +535,11 @@ function calculateDaysInRange(startDate, endDate, rangeStart, rangeEnd) {
   return Math.ceil(timeDiff / (1000 * 3600 * 24));
 }
 
+// ============================================
+// RENDER FUNCTIONS - WITH CORRECT COLUMN SPANNING
+// ============================================
+
+// Table has 10 columns: Code, Bank, Amount, Rate, Days, Inv Date, Interest Amt, Maturity Date, Maturity Amt, Current Value
 function renderByInvestmentType(data, toDate) {
   const container = document.getElementById('fullReportContainer');
   if (!container) return;
@@ -638,14 +637,20 @@ function renderByInvestmentType(data, toDate) {
                   </tr>
                 `;
               }).join('')}
+            </tbody>
+            <tfoot>
               <tr class="subtotal-row">
                 <td colspan="2" style="text-align: right; font-weight: 700;">${escapeHtml(type)} Subtotal:</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                <td>\n                <td>\n                <td>\n                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
-                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
+                <td></td>
+                <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
               </tr>
-            </tbody>
+            </tfoot>
           </table>
         </div>
       </div>
@@ -656,15 +661,19 @@ function renderByInvestmentType(data, toDate) {
     <div class="grouped-report grand-total-report">
       <div class="group-table-wrapper">
         <table class="group-table">
-          <tbody>
+          <tfoot>
             <tr class="grand-total-row">
               <td colspan="2" style="text-align: right; font-weight: 700;">Grand Total:</td>
               <td class="grand-total-cell">${formatCurrency(grandTotalAmount)}</td>
-              <td>\n              <td>\n              <td>\n              <td>\n              <td class="grand-total-cell">${formatCurrency(grandTotalInterest)}</td>
-              <td>\n              <td class="grand-total-cell">${formatCurrency(grandTotalMaturityAmount)}</td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td class="grand-total-cell">${formatCurrency(grandTotalInterest)}</td>
+              <td></td>
+              <td class="grand-total-cell">${formatCurrency(grandTotalMaturityAmount)}</td>
               <td class="grand-total-cell">${formatCurrency(grandTotalCurrentValue)}</td>
             </tr>
-          </tbody>
+          </tfoot>
         </table>
       </div>
     </div>
@@ -690,6 +699,11 @@ function renderByBank(data, toDate) {
     return;
   }
 
+  let grandTotalAmount = 0;
+  let grandTotalInterest = 0;
+  let grandTotalMaturityAmount = 0;
+  let grandTotalCurrentValue = 0;
+
   let html = '';
   Object.keys(grouped).sort().forEach(bank => {
     const items = grouped[bank];
@@ -711,6 +725,11 @@ function renderByBank(data, toDate) {
       subtotalMaturityAmount += maturityAmount;
       subtotalCurrentValue += currentValue;
     });
+
+    grandTotalAmount += subtotalAmount;
+    grandTotalInterest += subtotalInterest;
+    grandTotalMaturityAmount += subtotalMaturityAmount;
+    grandTotalCurrentValue += subtotalCurrentValue;
 
     html += `
       <div class="grouped-report">
@@ -755,19 +774,47 @@ function renderByBank(data, toDate) {
                   </tr>
                 `;
               }).join('')}
+            </tbody>
+            <tfoot>
               <tr class="subtotal-row">
                 <td colspan="2" style="text-align: right; font-weight: 700;">${escapeHtml(bank)} Subtotal:</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                <td>\n                <td>\n                <td>\n                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
-                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
+                <td></td>
+                <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
               </tr>
-            </tbody>
+            </tfoot>
           </table>
         </div>
       </div>
     `;
   });
+
+  html += `
+    <div class="grouped-report grand-total-report">
+      <div class="group-table-wrapper">
+        <table class="group-table">
+          <tfoot>
+            <tr class="grand-total-row">
+              <td colspan="2" style="text-align: right; font-weight: 700;">Grand Total:</td>
+              <td class="grand-total-cell">${formatCurrency(grandTotalAmount)}</td>
+              <td></td>
+              <td></td>
+              <td></td>
+              <td class="grand-total-cell">${formatCurrency(grandTotalInterest)}</td>
+              <td></td>
+              <td class="grand-total-cell">${formatCurrency(grandTotalMaturityAmount)}</td>
+              <td class="grand-total-cell">${formatCurrency(grandTotalCurrentValue)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  `;
 
   container.innerHTML = html;
 }
@@ -799,6 +846,11 @@ function renderByDuration(data, toDate) {
     return;
   }
 
+  let grandTotalAmount = 0;
+  let grandTotalInterest = 0;
+  let grandTotalMaturityAmount = 0;
+  let grandTotalCurrentValue = 0;
+
   let html = '';
   Object.keys(grouped).forEach(durationRange => {
     if (grouped[durationRange].length > 0) {
@@ -821,6 +873,11 @@ function renderByDuration(data, toDate) {
         subtotalMaturityAmount += maturityAmount;
         subtotalCurrentValue += currentValue;
       });
+
+      grandTotalAmount += subtotalAmount;
+      grandTotalInterest += subtotalInterest;
+      grandTotalMaturityAmount += subtotalMaturityAmount;
+      grandTotalCurrentValue += subtotalCurrentValue;
 
       html += `
         <div class="grouped-report">
@@ -867,14 +924,16 @@ function renderByDuration(data, toDate) {
                     </tr>
                   `;
                 }).join('')}
+              </tbody>
+              <tfoot>
                 <tr class="subtotal-row">
                   <td colspan="3" style="text-align: right; font-weight: 700;">${durationRange} Subtotal:</td>
                   <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                  <td>\n                  <td>\n                  <td>\n                  <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
+                  <td>\n                  <td>\n                  <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
                   <td>\n                  <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
                   <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
                 </tr>
-              </tbody>
+              </tfoot>
             </table>
           </div>
         </div>
@@ -882,8 +941,30 @@ function renderByDuration(data, toDate) {
     }
   });
 
+  html += `
+    <div class="grouped-report grand-total-report">
+      <div class="group-table-wrapper">
+        <table class="group-table">
+          <tfoot>
+            <tr class="grand-total-row">
+              <td colspan="3" style="text-align: right; font-weight: 700;">Grand Total:</td>
+              <td class="grand-total-cell">${formatCurrency(grandTotalAmount)}</td>
+              <td>\n              <td>\n              <td class="grand-total-cell">${formatCurrency(grandTotalInterest)}</td>
+              <td>\n              <td class="grand-total-cell">${formatCurrency(grandTotalMaturityAmount)}</td>
+              <td class="grand-total-cell">${formatCurrency(grandTotalCurrentValue)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  `;
+
   container.innerHTML = html;
 }
+
+// ============================================
+// INTEREST REPORT
+// ============================================
 
 function loadInterestReport() {
   const fromDateInput = document.getElementById('interestFromDate');
@@ -1058,14 +1139,16 @@ function renderInterestReport(data, fromDate, toDate) {
                   </tr>
                 `;
               }).join('')}
+            </tbody>
+            <tfoot>
               <tr class="subtotal-row">
                 <td colspan="2" style="text-align: right; font-weight: 700;">${escapeHtml(type)} Subtotal:</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                <td>\n                <td>\n                <td>\n                <td>\n                <td>\n                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalAccruedMonthly)}</td>
+                <td>\n                <td>\n                <td>\n                <td>\n                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalAccruedMonthly)}</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalAccruedToDate)}</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
               </tr>
-            </tbody>
+            </tfoot>
           </table>
         </div>
       </div>
@@ -1074,6 +1157,10 @@ function renderInterestReport(data, fromDate, toDate) {
 
   container.innerHTML = html;
 }
+
+// ============================================
+// MATURED INVESTMENTS
+// ============================================
 
 function loadMaturedInvestments() {
   const today = new Date().toISOString().split('T')[0];
