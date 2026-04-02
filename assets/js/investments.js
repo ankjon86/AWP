@@ -403,8 +403,13 @@ function loadFullInvestmentReport() {
 
   showInvestmentLoadingSpinner('fullReportContainer');
 
-  // Load ALL investments (no date filter) then filter locally for backdating
-  callGAS('getAllInvestments', {})
+  // Get all investments from start of year to a future date (to include all)
+  const startOfYear = getStartOfYear();
+  const futureDate = new Date();
+  futureDate.setFullYear(futureDate.getFullYear() + 5);
+  const endDate = futureDate.toISOString().split('T')[0];
+
+  callGAS('getInvestmentsByDateRange', { fromDate: startOfYear, toDate: endDate })
     .then(response => {
       if (response && !response.error) {
         allInvestments = response;
@@ -438,8 +443,7 @@ function filterActiveInvestmentsAsAt(investments, asAtDate) {
     const investmentDate = new Date(inv.investmentDate);
     const maturityDate = new Date(inv.maturityDate);
     
-    // Investment was active if: investmentDate <= asAtDate AND (maturityDate > asAtDate OR still active)
-    // For backdating: include if investment was started by asAtDate
+    // Investment was active if: investmentDate <= asAtDate AND maturityDate > asAtDate
     return investmentDate <= asAtDate && maturityDate > asAtDate;
   });
 }
@@ -512,8 +516,6 @@ function renderByInvestmentType(data, toDate) {
       const amount = parseFloat(row.amount) || 0;
       const interestAmount = parseFloat(row.interestAmount) || 0;
       const maturityAmount = parseFloat(row.maturityAmount) || 0;
-      const investDate = new Date(row.investmentDate);
-      const maturityDate = new Date(row.maturityDate);
       const rate = parseFloat(row.interestRate) || 0;
       
       // Calculate accrued interest to the selected TO date (capped at maturity)
@@ -577,9 +579,9 @@ function renderByInvestmentType(data, toDate) {
               <tr class="subtotal-row">
                 <td colspan="2" style="text-align: right;">${escapeHtml(type)} Subtotal:</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                <td></td><td></td><td></td>
+                <td>\n                <td>\n                <td>\n                <td>
                 <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
-                <td></td>
+                <td>\n                <td>
                 <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
               </tr>
@@ -598,9 +600,9 @@ function renderByInvestmentType(data, toDate) {
             <tr class="grand-total-row">
               <td colspan="2" style="text-align: right; font-weight: 700;">Grand Total:</td>
               <td class="grand-total-cell">${formatCurrency(grandTotalAmount)}</td>
-              <td></td><td></td><td></td>
+              <td>\n              <td>\n              <td>\n              <td>
               <td class="grand-total-cell">${formatCurrency(grandTotalInterest)}</td>
-              <td></td>
+              <td>\n              <td>
               <td class="grand-total-cell">${formatCurrency(grandTotalMaturityAmount)}</td>
               <td class="grand-total-cell">${formatCurrency(grandTotalCurrentValue)}</td>
             </tr>
@@ -698,9 +700,9 @@ function renderByBank(data, toDate) {
               <tr class="subtotal-row">
                 <td colspan="2" style="text-align: right;">${escapeHtml(bank)} Subtotal:</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                <td></td><td></td><td></td>
+                <td>\n                <td>\n                <td>\n                <td>
                 <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
-                <td></td>
+                <td>\n                <td>
                 <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
               </tr>
@@ -812,9 +814,9 @@ function renderByDuration(data, toDate) {
                 <tr class="subtotal-row">
                   <td colspan="3" style="text-align: right;">${durationRange} Subtotal:</td>
                   <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                  <td></td><td><td></td>
+                  <td>\n                  <td>\n                  <td>\n                  <td>
                   <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
-                  <td></td>
+                  <td>\n                  <td>
                   <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
                   <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
                 </tr>
@@ -840,8 +842,13 @@ function loadInterestReport() {
 
   showInvestmentLoadingSpinner('interestReportContainer');
 
-  // Load ALL investments and filter for active ones during the period
-  callGAS('getAllInvestments', {})
+  // Get all investments from start of year to a future date (to include all)
+  const startOfYear = getStartOfYear();
+  const futureDate = new Date();
+  futureDate.setFullYear(futureDate.getFullYear() + 5);
+  const endDate = futureDate.toISOString().split('T')[0];
+
+  callGAS('getInvestmentsByDateRange', { fromDate: startOfYear, toDate: endDate })
     .then(response => {
       if (response && !response.error) {
         renderInterestReport(response, fromDate, toDate);
@@ -980,7 +987,8 @@ function renderInterestReport(data, fromDate, toDate) {
               <tr class="subtotal-row">
                 <td colspan="2" style="text-align: right;">${escapeHtml(type)} Subtotal:</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                <td>\n                <td>\n                <td>\n                <td>\n                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalAccruedMonthly)}</td>
+                <td>\n                <td>\n                <td>\n                <td>\n                <td>\n                <td>
+                <td class="subtotal-cell">${formatCurrency(subtotalAccruedMonthly)}</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalAccruedToDate)}</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
               </tr>
