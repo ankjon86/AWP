@@ -66,6 +66,7 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
+    flex: 1;
 }
 
 .menu-toggle-btn {
@@ -90,9 +91,11 @@ body {
 .logo {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     font-size: 15px;
     font-weight: 600;
+    flex: 1;
 }
 
 .logo i {
@@ -101,6 +104,9 @@ body {
 
 .nav-right {
     position: relative;
+    flex: 1;
+    display: flex;
+    justify-content: flex-end;
 }
 
 .user-menu {
