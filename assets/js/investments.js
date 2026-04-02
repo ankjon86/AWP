@@ -17,13 +17,11 @@ function initInvestmentModule() {
   const dateField = document.getElementById('investmentDate');
   if (dateField) dateField.value = today;
 
-  // Setup bank select change handler
   const bankSelect = document.getElementById('bankName');
   if (bankSelect) {
     bankSelect.addEventListener('change', handleBankChange);
   }
 
-  // Close modal when clicking outside
   window.addEventListener('click', function(event) {
     const modal = document.getElementById('messageModal');
     if (modal && event.target === modal) {
@@ -33,24 +31,26 @@ function initInvestmentModule() {
 }
 
 function initInvestmentReportModule() {
-  const today = new Date().toISOString().split('T')[0];
-  const startOfYear = getStartOfYear();
-  
-  const purchaseFromDate = document.getElementById('purchaseFromDate');
-  const purchaseToDate = document.getElementById('purchaseToDate');
-  const fullReportToDate = document.getElementById('fullReportToDate');
-  const interestFromDate = document.getElementById('interestFromDate');
-  const interestToDate = document.getElementById('interestToDate');
-  
-  if (purchaseFromDate) purchaseFromDate.value = startOfYear;
-  if (purchaseToDate) purchaseToDate.value = today;
-  if (fullReportToDate) fullReportToDate.value = today;
-  if (interestFromDate) interestFromDate.value = startOfYear;
-  if (interestToDate) interestToDate.value = today;
+  // Wait for DOM to be fully loaded
+  setTimeout(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const startOfYear = getStartOfYear();
+    
+    const purchaseFromDate = document.getElementById('purchaseFromDate');
+    const purchaseToDate = document.getElementById('purchaseToDate');
+    const fullReportToDate = document.getElementById('fullReportToDate');
+    const interestFromDate = document.getElementById('interestFromDate');
+    const interestToDate = document.getElementById('interestToDate');
+    
+    if (purchaseFromDate) purchaseFromDate.value = startOfYear;
+    if (purchaseToDate) purchaseToDate.value = today;
+    if (fullReportToDate) fullReportToDate.value = today;
+    if (interestFromDate) interestFromDate.value = startOfYear;
+    if (interestToDate) interestToDate.value = today;
 
-  loadPurchaseReport();
+    loadPurchaseReport();
+  }, 100);
 
-  // Close dropdown when clicking outside
   document.addEventListener('click', function(event) {
     const portal = document.getElementById('investmentActionPortal');
     if (portal && portal.style.display === 'block') {
@@ -60,7 +60,6 @@ function initInvestmentReportModule() {
     }
   });
 
-  // Close modal when clicking outside
   window.addEventListener('click', function(event) {
     const modal = document.getElementById('rolloverModal');
     if (modal && event.target === modal) {
@@ -85,16 +84,17 @@ function handleInvestmentTypeChange() {
   const addNewFields = document.getElementById('addNewInvestmentTypeFields');
 
   if (investmentType === 'add-new') {
-    addNewFields.style.display = 'block';
-    codeField.value = '';
+    if (addNewFields) addNewFields.style.display = 'block';
+    if (codeField) codeField.value = '';
   } else {
-    addNewFields.style.display = 'none';
-    document.getElementById('newInvestmentType').value = '';
+    if (addNewFields) addNewFields.style.display = 'none';
+    const newTypeField = document.getElementById('newInvestmentType');
+    if (newTypeField) newTypeField.value = '';
     
     if (investmentType) {
       generateInvestmentCode(investmentType);
     } else {
-      codeField.value = '';
+      if (codeField) codeField.value = '';
     }
   }
 }
@@ -104,10 +104,11 @@ function handleBankChange() {
   const addNewFields = document.getElementById('addNewBankFields');
 
   if (bankName === 'add-new') {
-    addNewFields.style.display = 'block';
+    if (addNewFields) addNewFields.style.display = 'block';
   } else {
-    addNewFields.style.display = 'none';
-    document.getElementById('newBankName').value = '';
+    if (addNewFields) addNewFields.style.display = 'none';
+    const newBankField = document.getElementById('newBankName');
+    if (newBankField) newBankField.value = '';
   }
 }
 
@@ -130,43 +131,58 @@ function generateInvestmentCode(investmentType) {
 // ============================================
 
 function calculateMaturityDate() {
-  const investmentDate = document.getElementById('investmentDate').value;
-  const duration = parseInt(document.getElementById('duration').value) || 0;
+  const investmentDate = document.getElementById('investmentDate');
+  const durationField = document.getElementById('duration');
+  
+  if (!investmentDate || !durationField) return;
+  
+  const investmentDateValue = investmentDate.value;
+  const duration = parseInt(durationField.value) || 0;
 
-  if (!investmentDate || duration <= 0) {
-    document.getElementById('maturityDate').value = '';
+  if (!investmentDateValue || duration <= 0) {
+    const maturityDateField = document.getElementById('maturityDate');
+    if (maturityDateField) maturityDateField.value = '';
     return;
   }
 
-  const startDate = new Date(investmentDate);
+  const startDate = new Date(investmentDateValue);
   const maturityDate = new Date(startDate.getTime() + (duration * 24 * 60 * 60 * 1000));
   
   const year = maturityDate.getFullYear();
   const month = String(maturityDate.getMonth() + 1).padStart(2, '0');
   const day = String(maturityDate.getDate()).padStart(2, '0');
   
-  document.getElementById('maturityDate').value = `${year}-${month}-${day}`;
+  const maturityDateField = document.getElementById('maturityDate');
+  if (maturityDateField) maturityDateField.value = `${year}-${month}-${day}`;
   calculateMaturityAmount();
 }
 
 function calculateMaturityAmount() {
-  const amount = parseFloat(document.getElementById('amount').value) || 0;
-  const interestRate = parseFloat(document.getElementById('interestRate').value) || 0;
-  const duration = parseInt(document.getElementById('duration').value) || 0;
+  const amountField = document.getElementById('amount');
+  const interestRateField = document.getElementById('interestRate');
+  const durationField = document.getElementById('duration');
+  
+  if (!amountField || !interestRateField || !durationField) return;
+  
+  const amount = parseFloat(amountField.value) || 0;
+  const interestRate = parseFloat(interestRateField.value) || 0;
+  const duration = parseInt(durationField.value) || 0;
 
+  const interestAmountField = document.getElementById('interestAmount');
+  const maturityAmountField = document.getElementById('maturityAmount');
+  
   if (amount <= 0 || interestRate < 0 || duration <= 0) {
-    document.getElementById('interestAmount').value = '0.00';
-    document.getElementById('maturityAmount').value = '0.00';
+    if (interestAmountField) interestAmountField.value = '0.00';
+    if (maturityAmountField) maturityAmountField.value = '0.00';
     return;
   }
 
-  // Simple interest: I = P * R * T / 100
   const timeInYears = duration / 365;
   const interestAmount = (amount * interestRate * timeInYears) / 100;
   const maturityAmount = amount + interestAmount;
 
-  document.getElementById('interestAmount').value = formatCurrency(interestAmount);
-  document.getElementById('maturityAmount').value = formatCurrency(maturityAmount);
+  if (interestAmountField) interestAmountField.value = formatCurrency(interestAmount);
+  if (maturityAmountField) maturityAmountField.value = formatCurrency(maturityAmount);
 }
 
 // ============================================
@@ -185,7 +201,6 @@ function submitNewInvestment() {
   const interestAmount = document.getElementById('interestAmount').value;
   const maturityAmount = document.getElementById('maturityAmount').value;
 
-  // Validation
   if (!investmentType || investmentType === 'add-new') {
     if (investmentType === 'add-new') {
       const newType = document.getElementById('newInvestmentType').value;
@@ -265,16 +280,25 @@ function submitNewInvestment() {
       if (response && !response.error) {
         showInvestmentMessage('✓ Investment added successfully!', 'success');
         setTimeout(() => {
-          document.getElementById('newInvestmentForm').reset();
+          const form = document.getElementById('newInvestmentForm');
+          if (form) form.reset();
           const today = new Date().toISOString().split('T')[0];
-          document.getElementById('investmentDate').value = today;
-          document.getElementById('investmentCode').value = '';
-          document.getElementById('interestAmount').value = '0.00';
-          document.getElementById('maturityAmount').value = '0.00';
-          document.getElementById('investmentType').value = '';
-          document.getElementById('bankName').value = '';
-          document.getElementById('addNewInvestmentTypeFields').style.display = 'none';
-          document.getElementById('addNewBankFields').style.display = 'none';
+          const investmentDateField = document.getElementById('investmentDate');
+          if (investmentDateField) investmentDateField.value = today;
+          const codeField = document.getElementById('investmentCode');
+          if (codeField) codeField.value = '';
+          const interestAmountField = document.getElementById('interestAmount');
+          if (interestAmountField) interestAmountField.value = '0.00';
+          const maturityAmountField = document.getElementById('maturityAmount');
+          if (maturityAmountField) maturityAmountField.value = '0.00';
+          const typeField = document.getElementById('investmentType');
+          if (typeField) typeField.value = '';
+          const bankField = document.getElementById('bankName');
+          if (bankField) bankField.value = '';
+          const addNewTypeFields = document.getElementById('addNewInvestmentTypeFields');
+          if (addNewTypeFields) addNewTypeFields.style.display = 'none';
+          const addNewBankFields = document.getElementById('addNewBankFields');
+          if (addNewBankFields) addNewBankFields.style.display = 'none';
         }, 1500);
       } else {
         showInvestmentMessage('Error adding investment: ' + (response?.error || 'Unknown error'), 'error');
@@ -291,52 +315,73 @@ function submitNewInvestment() {
 // ============================================
 
 function switchInvestmentReportTab(tabName) {
-  document.querySelectorAll('.tab-content').forEach(tab => {
+  const tabs = document.querySelectorAll('.tab-content');
+  const btns = document.querySelectorAll('.tab-btn');
+  
+  tabs.forEach(tab => {
     tab.classList.remove('active');
   });
-  document.querySelectorAll('.tab-btn').forEach(btn => {
+  btns.forEach(btn => {
     btn.classList.remove('active');
   });
 
-  document.getElementById(tabName).classList.add('active');
-  event.target.closest('.tab-btn').classList.add('active');
+  const selectedTab = document.getElementById(tabName);
+  if (selectedTab) selectedTab.classList.add('active');
+  
+  if (event && event.target) {
+    const btnElement = event.target.closest('.tab-btn');
+    if (btnElement) btnElement.classList.add('active');
+  }
 
   const purchaseControls = document.getElementById('purchaseControls');
   const fullReportControls = document.getElementById('fullReportControls');
   const interestControls = document.getElementById('interestControls');
   const maturedControls = document.getElementById('maturedControls');
 
+  if (purchaseControls) purchaseControls.style.display = 'none';
+  if (fullReportControls) fullReportControls.style.display = 'none';
+  if (interestControls) interestControls.style.display = 'none';
+  if (maturedControls) maturedControls.style.display = 'none';
+
   if (tabName === 'purchaseReport') {
-    purchaseControls.style.display = 'flex';
-    fullReportControls.style.display = 'none';
-    interestControls.style.display = 'none';
-    maturedControls.style.display = 'none';
+    if (purchaseControls) purchaseControls.style.display = 'flex';
     loadPurchaseReport();
   } else if (tabName === 'fullReport') {
-    purchaseControls.style.display = 'none';
-    fullReportControls.style.display = 'flex';
-    interestControls.style.display = 'none';
-    maturedControls.style.display = 'none';
-    document.getElementById('reportTypeSelect').value = '';
-    document.getElementById('fullReportContainer').innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Please select a report type</p>';
+    if (fullReportControls) fullReportControls.style.display = 'flex';
+    if (interestControls) interestControls.style.display = 'none';
+    if (maturedControls) maturedControls.style.display = 'none';
+    const reportTypeSelect = document.getElementById('reportTypeSelect');
+    if (reportTypeSelect) reportTypeSelect.value = '';
+    const fullReportContainer = document.getElementById('fullReportContainer');
+    if (fullReportContainer) {
+      fullReportContainer.innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Please select a report type</p>';
+    }
   } else if (tabName === 'interestReport') {
-    purchaseControls.style.display = 'none';
-    fullReportControls.style.display = 'none';
-    interestControls.style.display = 'flex';
-    maturedControls.style.display = 'none';
+    if (purchaseControls) purchaseControls.style.display = 'none';
+    if (fullReportControls) fullReportControls.style.display = 'none';
+    if (interestControls) interestControls.style.display = 'flex';
+    if (maturedControls) maturedControls.style.display = 'none';
     loadInterestReport();
   } else if (tabName === 'maturedReport') {
-    purchaseControls.style.display = 'none';
-    fullReportControls.style.display = 'none';
-    interestControls.style.display = 'none';
-    maturedControls.style.display = 'flex';
+    if (purchaseControls) purchaseControls.style.display = 'none';
+    if (fullReportControls) fullReportControls.style.display = 'none';
+    if (interestControls) interestControls.style.display = 'none';
+    if (maturedControls) maturedControls.style.display = 'flex';
     loadMaturedInvestments();
   }
 }
 
 function loadPurchaseReport() {
-  const fromDate = document.getElementById('purchaseFromDate').value;
-  const toDate = document.getElementById('purchaseToDate').value;
+  const fromDateInput = document.getElementById('purchaseFromDate');
+  const toDateInput = document.getElementById('purchaseToDate');
+  
+  if (!fromDateInput || !toDateInput) {
+    console.error('Date input elements not found');
+    return;
+  }
+
+  const fromDate = fromDateInput.value;
+  const toDate = toDateInput.value;
 
   if (!fromDate || !toDate) {
     showInvestmentEmptyState('purchaseReportBody', 'Please select date range', 7);
@@ -383,9 +428,15 @@ function renderPurchaseReportTable(data) {
 }
 
 function handleReportTypeChange() {
-  const reportType = document.getElementById('reportTypeSelect').value;
+  const reportTypeSelect = document.getElementById('reportTypeSelect');
+  if (!reportTypeSelect) return;
+  
+  const reportType = reportTypeSelect.value;
   if (!reportType) {
-    document.getElementById('fullReportContainer').innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Please select a report type</p>';
+    const fullReportContainer = document.getElementById('fullReportContainer');
+    if (fullReportContainer) {
+      fullReportContainer.innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Please select a report type</p>';
+    }
     return;
   }
   currentReportType = reportType;
@@ -393,29 +444,42 @@ function handleReportTypeChange() {
 }
 
 function loadFullInvestmentReport() {
-  const toDate = document.getElementById('fullReportToDate').value;
-  const reportType = document.getElementById('reportTypeSelect').value;
+  const toDateInput = document.getElementById('fullReportToDate');
+  const reportTypeSelect = document.getElementById('reportTypeSelect');
+  
+  if (!toDateInput || !reportTypeSelect) {
+    console.error('Required elements not found');
+    return;
+  }
+  
+  const toDate = toDateInput.value;
+  const reportType = reportTypeSelect.value;
 
   if (!toDate || !reportType) {
-    document.getElementById('fullReportContainer').innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Please select date and report type</p>';
+    const fullReportContainer = document.getElementById('fullReportContainer');
+    if (fullReportContainer) {
+      fullReportContainer.innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Please select date and report type</p>';
+    }
     return;
   }
 
   showInvestmentLoadingSpinner('fullReportContainer');
 
-  // Get all investments from start of year to a future date (to include all)
-  const startOfYear = getStartOfYear();
-  const futureDate = new Date();
-  futureDate.setFullYear(futureDate.getFullYear() + 5);
-  const endDate = futureDate.toISOString().split('T')[0];
+  const startDate = new Date();
+  startDate.setFullYear(startDate.getFullYear() - 10);
+  const endDate = new Date();
+  endDate.setFullYear(endDate.getFullYear() + 10);
+  
+  const fromDate = startDate.toISOString().split('T')[0];
+  const toDateEnd = endDate.toISOString().split('T')[0];
 
-  callGAS('getInvestmentsByDateRange', { fromDate: startOfYear, toDate: endDate })
+  callGAS('getInvestmentsByDateRange', { fromDate: fromDate, toDate: toDateEnd })
     .then(response => {
       if (response && !response.error) {
         allInvestments = response;
         
-        // Filter investments that were active on or before the As At date
         const asAtDate = new Date(toDate);
+        asAtDate.setHours(0, 0, 0, 0);
         const activeInvestments = filterActiveInvestmentsAsAt(allInvestments, asAtDate);
         
         if (reportType === 'byType') {
@@ -426,50 +490,56 @@ function loadFullInvestmentReport() {
           renderByDuration(activeInvestments, toDate);
         }
       } else {
-        document.getElementById('fullReportContainer').innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Error loading report</p>';
+        const fullReportContainer = document.getElementById('fullReportContainer');
+        if (fullReportContainer) {
+          fullReportContainer.innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Error loading report</p>';
+        }
       }
     })
     .catch(error => {
       console.error('Error loading full report:', error);
-      document.getElementById('fullReportContainer').innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Error loading report</p>';
+      const fullReportContainer = document.getElementById('fullReportContainer');
+      if (fullReportContainer) {
+        fullReportContainer.innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Error loading report</p>';
+      }
     });
 }
 
-// Helper function to filter investments active on a specific date (supports backdating)
 function filterActiveInvestmentsAsAt(investments, asAtDate) {
   if (!investments || !Array.isArray(investments)) return [];
   
   return investments.filter(inv => {
     const investmentDate = new Date(inv.investmentDate);
     const maturityDate = new Date(inv.maturityDate);
+    investmentDate.setHours(0, 0, 0, 0);
+    maturityDate.setHours(0, 0, 0, 0);
     
-    // Investment was active if: investmentDate <= asAtDate AND maturityDate > asAtDate
     return investmentDate <= asAtDate && maturityDate > asAtDate;
   });
 }
 
-// Helper function to calculate accrued interest up to a specific date
 function calculateAccruedToDate(amount, rate, investmentDate, maturityDate, asAtDate) {
   const investDate = new Date(investmentDate);
   const maturity = new Date(maturityDate);
   const asAt = new Date(asAtDate);
   
-  // Effective end date is the earlier of asAtDate and maturityDate
+  investDate.setHours(0, 0, 0, 0);
+  maturity.setHours(0, 0, 0, 0);
+  asAt.setHours(0, 0, 0, 0);
+  
+  if (asAt < investDate) return 0;
+  
   const effectiveEndDate = asAt < maturity ? asAt : maturity;
+  if (effectiveEndDate < investDate) return 0;
   
-  // Calculate days between investment date and effective end date
   const daysDiff = Math.ceil((effectiveEndDate - investDate) / (1000 * 3600 * 24));
-  
   if (daysDiff <= 0) return 0;
   
-  // Simple interest calculation
   const timeInYears = daysDiff / 365;
   const accruedInterest = (amount * rate / 100) * timeInYears;
-  
   return accruedInterest;
 }
 
-// Helper function to calculate days in range for interest report
 function calculateDaysInRange(startDate, endDate, rangeStart, rangeEnd) {
   const effectiveStart = new Date(Math.max(startDate.getTime(), rangeStart.getTime()));
   const effectiveEnd = new Date(Math.min(endDate.getTime(), rangeEnd.getTime()));
@@ -482,9 +552,8 @@ function calculateDaysInRange(startDate, endDate, rangeStart, rangeEnd) {
 
 function renderByInvestmentType(data, toDate) {
   const container = document.getElementById('fullReportContainer');
-  const toDateObj = new Date(toDate);
+  if (!container) return;
 
-  // Group by investment type
   const grouped = {};
   data.forEach(item => {
     if (!grouped[item.investmentType]) {
@@ -518,7 +587,6 @@ function renderByInvestmentType(data, toDate) {
       const maturityAmount = parseFloat(row.maturityAmount) || 0;
       const rate = parseFloat(row.interestRate) || 0;
       
-      // Calculate accrued interest to the selected TO date (capped at maturity)
       const accruedToDate = calculateAccruedToDate(amount, rate, row.investmentDate, row.maturityDate, toDate);
       const currentValue = amount + accruedToDate;
 
@@ -623,7 +691,7 @@ function renderByInvestmentType(data, toDate) {
 
 function renderByBank(data, toDate) {
   const container = document.getElementById('fullReportContainer');
-  const toDateObj = new Date(toDate);
+  if (!container) return;
 
   const grouped = {};
   data.forEach(item => {
@@ -727,7 +795,7 @@ function renderByBank(data, toDate) {
 
 function renderByDuration(data, toDate) {
   const container = document.getElementById('fullReportContainer');
-  const toDateObj = new Date(toDate);
+  if (!container) return;
 
   const grouped = {
     '0 – 91 Days': [],
@@ -843,46 +911,70 @@ function renderByDuration(data, toDate) {
 }
 
 function loadInterestReport() {
-  const fromDate = document.getElementById('interestFromDate').value;
-  const toDate = document.getElementById('interestToDate').value;
+  const fromDateInput = document.getElementById('interestFromDate');
+  const toDateInput = document.getElementById('interestToDate');
+  
+  if (!fromDateInput || !toDateInput) {
+    console.error('Date input elements not found');
+    return;
+  }
+  
+  const fromDate = fromDateInput.value;
+  const toDate = toDateInput.value;
 
   if (!fromDate || !toDate) {
-    document.getElementById('interestReportContainer').innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Please select date range</p>';
+    const interestContainer = document.getElementById('interestReportContainer');
+    if (interestContainer) {
+      interestContainer.innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Please select date range</p>';
+    }
     return;
   }
 
   showInvestmentLoadingSpinner('interestReportContainer');
 
-  // Get all investments from start of year to a future date (to include all)
-  const startOfYear = getStartOfYear();
-  const futureDate = new Date();
-  futureDate.setFullYear(futureDate.getFullYear() + 5);
-  const endDate = futureDate.toISOString().split('T')[0];
+  const startDate = new Date();
+  startDate.setFullYear(startDate.getFullYear() - 10);
+  const endDate = new Date();
+  endDate.setFullYear(endDate.getFullYear() + 10);
+  
+  const wideFromDate = startDate.toISOString().split('T')[0];
+  const wideToDate = endDate.toISOString().split('T')[0];
 
-  callGAS('getInvestmentsByDateRange', { fromDate: startOfYear, toDate: endDate })
+  callGAS('getInvestmentsByDateRange', { fromDate: wideFromDate, toDate: wideToDate })
     .then(response => {
       if (response && !response.error) {
         renderInterestReport(response, fromDate, toDate);
       } else {
-        document.getElementById('interestReportContainer').innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Error loading report</p>';
+        const interestContainer = document.getElementById('interestReportContainer');
+        if (interestContainer) {
+          interestContainer.innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Error loading report</p>';
+        }
       }
     })
     .catch(error => {
       console.error('Error loading interest report:', error);
-      document.getElementById('interestReportContainer').innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Error loading report</p>';
+      const interestContainer = document.getElementById('interestReportContainer');
+      if (interestContainer) {
+        interestContainer.innerHTML = '<p style="text-align: center; color: #a0aec0; padding: 30px;">Error loading report</p>';
+      }
     });
 }
 
 function renderInterestReport(data, fromDate, toDate) {
   const container = document.getElementById('interestReportContainer');
+  if (!container) return;
+  
   const fromDateObj = new Date(fromDate);
   const toDateObj = new Date(toDate);
+  fromDateObj.setHours(0, 0, 0, 0);
+  toDateObj.setHours(0, 0, 0, 0);
 
-  // Filter: Include investments that were active ANYTIME during the selected period
-  // An investment is active if: investmentDate <= toDate AND maturityDate > fromDate
   const activeInvestments = data.filter(item => {
     const investmentDate = new Date(item.investmentDate);
     const maturityDate = new Date(item.maturityDate);
+    investmentDate.setHours(0, 0, 0, 0);
+    maturityDate.setHours(0, 0, 0, 0);
+    
     return investmentDate <= toDateObj && maturityDate > fromDateObj;
   });
 
@@ -891,7 +983,6 @@ function renderInterestReport(data, fromDate, toDate) {
     return;
   }
 
-  // Group by investment type
   const grouped = {};
   activeInvestments.forEach(item => {
     if (!grouped[item.investmentType]) {
@@ -920,12 +1011,10 @@ function renderInterestReport(data, fromDate, toDate) {
       const maturityDate = new Date(row.maturityDate);
       const interestAmount = parseFloat(row.interestAmount) || 0;
 
-      // Calculate accrued monthly interest (for days within selected range)
       const daysInRange = calculateDaysInRange(investDate, maturityDate, fromDateObj, toDateObj);
       const dailyRate = (amount * (rate / 100)) / 365;
       const accruedMonthly = dailyRate * daysInRange;
 
-      // Calculate accrued interest to date (from investment date to toDate, capped at maturity)
       const effectiveToDate = toDateObj < maturityDate ? toDateObj : maturityDate;
       const daysToDate = Math.ceil((effectiveToDate - investDate) / (1000 * 3600 * 24));
       const accruedToDate = dailyRate * Math.max(0, daysToDate);
@@ -1061,6 +1150,7 @@ function openMaturedDropdown(event, investmentCode) {
 
   const rect = event.target.closest('button').getBoundingClientRect();
   const portal = document.getElementById('investmentActionPortal');
+  if (!portal) return;
 
   portal.innerHTML = `
     <div class="action-dropdown-content">
@@ -1100,30 +1190,40 @@ function openRolloverModal(investmentCode) {
 
   investmentToRollover = investment;
 
-  document.getElementById('rolloverInvestmentType').value = investment.investmentType;
-  document.getElementById('rolloverBankName').value = investment.bankName;
-  document.getElementById('rolloverAmount').value = investment.maturityAmount;
-  document.getElementById('rolloverInterestRate').value = investment.interestRate;
-  document.getElementById('rolloverDuration').value = investment.duration;
+  const rolloverType = document.getElementById('rolloverInvestmentType');
+  const rolloverBank = document.getElementById('rolloverBankName');
+  const rolloverAmount = document.getElementById('rolloverAmount');
+  const rolloverRate = document.getElementById('rolloverInterestRate');
+  const rolloverDuration = document.getElementById('rolloverDuration');
+  
+  if (rolloverType) rolloverType.value = investment.investmentType;
+  if (rolloverBank) rolloverBank.value = investment.bankName;
+  if (rolloverAmount) rolloverAmount.value = investment.maturityAmount;
+  if (rolloverRate) rolloverRate.value = investment.interestRate;
+  if (rolloverDuration) rolloverDuration.value = investment.duration;
 
   const today = new Date().toISOString().split('T')[0];
-  document.getElementById('rolloverInvestmentDate').value = today;
+  const rolloverDate = document.getElementById('rolloverInvestmentDate');
+  if (rolloverDate) rolloverDate.value = today;
 
   generateRolloverInvestmentCode(investment.investmentType);
   calculateRolloverMaturityDate();
 
-  document.getElementById('rolloverModal').style.display = 'flex';
+  const rolloverModal = document.getElementById('rolloverModal');
+  if (rolloverModal) rolloverModal.style.display = 'flex';
 }
 
 function closeRolloverModal() {
-  document.getElementById('rolloverModal').style.display = 'none';
+  const rolloverModal = document.getElementById('rolloverModal');
+  if (rolloverModal) rolloverModal.style.display = 'none';
   investmentToRollover = null;
 }
 
 function generateRolloverInvestmentCode(investmentType) {
   callGAS('generateInvestmentCode', { investmentType: investmentType })
     .then(response => {
-      document.getElementById('rolloverInvestmentCode').value = response || '';
+      const codeField = document.getElementById('rolloverInvestmentCode');
+      if (codeField) codeField.value = response || '';
     })
     .catch(error => {
       console.error('Error generating code:', error);
@@ -1131,18 +1231,27 @@ function generateRolloverInvestmentCode(investmentType) {
 }
 
 function handleRolloverInvestmentTypeChange() {
-  const investmentType = document.getElementById('rolloverInvestmentType').value;
+  const investmentTypeSelect = document.getElementById('rolloverInvestmentType');
+  if (!investmentTypeSelect) return;
+  
+  const investmentType = investmentTypeSelect.value;
   if (investmentType) {
     generateRolloverInvestmentCode(investmentType);
   }
 }
 
 function calculateRolloverMaturityDate() {
-  const investmentDate = document.getElementById('rolloverInvestmentDate').value;
-  const duration = parseInt(document.getElementById('rolloverDuration').value) || 0;
+  const investmentDateInput = document.getElementById('rolloverInvestmentDate');
+  const durationInput = document.getElementById('rolloverDuration');
+  
+  if (!investmentDateInput || !durationInput) return;
+  
+  const investmentDate = investmentDateInput.value;
+  const duration = parseInt(durationInput.value) || 0;
 
   if (!investmentDate || duration <= 0) {
-    document.getElementById('rolloverMaturityDate').value = '';
+    const maturityDateField = document.getElementById('rolloverMaturityDate');
+    if (maturityDateField) maturityDateField.value = '';
     return;
   }
 
@@ -1153,18 +1262,28 @@ function calculateRolloverMaturityDate() {
   const month = String(maturityDate.getMonth() + 1).padStart(2, '0');
   const day = String(maturityDate.getDate()).padStart(2, '0');
 
-  document.getElementById('rolloverMaturityDate').value = `${year}-${month}-${day}`;
+  const maturityDateField = document.getElementById('rolloverMaturityDate');
+  if (maturityDateField) maturityDateField.value = `${year}-${month}-${day}`;
   calculateRolloverMaturityAmount();
 }
 
 function calculateRolloverMaturityAmount() {
-  const amount = parseFloat(document.getElementById('rolloverAmount').value) || 0;
-  const interestRate = parseFloat(document.getElementById('rolloverInterestRate').value) || 0;
-  const duration = parseInt(document.getElementById('rolloverDuration').value) || 0;
+  const amountInput = document.getElementById('rolloverAmount');
+  const rateInput = document.getElementById('rolloverInterestRate');
+  const durationInput = document.getElementById('rolloverDuration');
+  
+  if (!amountInput || !rateInput || !durationInput) return;
+  
+  const amount = parseFloat(amountInput.value) || 0;
+  const interestRate = parseFloat(rateInput.value) || 0;
+  const duration = parseInt(durationInput.value) || 0;
+
+  const interestAmountField = document.getElementById('rolloverInterestAmount');
+  const maturityAmountField = document.getElementById('rolloverMaturityAmount');
 
   if (amount <= 0 || interestRate < 0 || duration <= 0) {
-    document.getElementById('rolloverInterestAmount').value = '0.00';
-    document.getElementById('rolloverMaturityAmount').value = '0.00';
+    if (interestAmountField) interestAmountField.value = '0.00';
+    if (maturityAmountField) maturityAmountField.value = '0.00';
     return;
   }
 
@@ -1172,8 +1291,8 @@ function calculateRolloverMaturityAmount() {
   const interestAmount = (amount * interestRate * timeInYears) / 100;
   const maturityAmount = amount + interestAmount;
 
-  document.getElementById('rolloverInterestAmount').value = formatCurrency(interestAmount);
-  document.getElementById('rolloverMaturityAmount').value = formatCurrency(maturityAmount);
+  if (interestAmountField) interestAmountField.value = formatCurrency(interestAmount);
+  if (maturityAmountField) maturityAmountField.value = formatCurrency(maturityAmount);
 }
 
 function submitRolloverInvestment() {
@@ -1233,6 +1352,8 @@ function showInvestmentMessage(message, type) {
   const modal = document.getElementById('messageModal');
   const messageDiv = document.getElementById('modalMessage');
 
+  if (!modal || !messageDiv) return;
+
   const types = {
     success: 'success-message',
     error: 'error-message',
@@ -1280,7 +1401,7 @@ function showInvestmentEmptyState(elementId, message, colSpan) {
           <i class="fas fa-folder-open"></i>
           <p>${message}</p>
         </td>
-      </tr>
+      <tr>
     `;
   } else {
     const container = document.getElementById(elementId);
