@@ -210,7 +210,7 @@ function submitNewInventory() {
 }
 
 // ============================================
-// REPORT FUNCTIONS
+// REPORT FUNCTIONS - FIXED API CALLS
 // ============================================
 
 function switchInventoryTab(tabName) {
@@ -275,28 +275,24 @@ function loadPurchaseReport() {
   console.log('Loading purchase report - From:', fromDate, 'To:', toDate);
   showInventoryLoadingSpinner('purchaseTableBody', 7);
   
-  // IMPORTANT: Pass parameters as direct arguments, not as an object
-  // The Apps Script function expects two parameters: fromDate, toDate
+  // Pass parameters as separate arguments
   google.script.run
     .withSuccessHandler(function(response) {
       console.log('Purchase report response:', response);
-      hideInventoryLoadingSpinner('purchaseTableBody');
+      hideLoadingSpinner('purchaseTableBody');
       
-      // Check if response has error
       if (response && response.error) {
         console.error('Error in response:', response.error);
         showInventoryEmptyState('purchaseTableBody', 'Error: ' + response.error, 7);
         return;
       }
       
-      // Handle response - it should be an array directly
       let reportData = [];
       if (Array.isArray(response)) {
         reportData = response;
       } else if (response && response.data && Array.isArray(response.data)) {
         reportData = response.data;
       } else if (response && typeof response === 'object') {
-        // Try to extract array from object
         reportData = Object.values(response).filter(Array.isArray)[0] || [];
       }
       
@@ -308,11 +304,12 @@ function loadPurchaseReport() {
     })
     .withFailureHandler(function(error) {
       console.error('Error loading purchase report:', error);
-      hideInventoryLoadingSpinner('purchaseTableBody');
+      hideLoadingSpinner('purchaseTableBody');
       showInventoryEmptyState('purchaseTableBody', 'Error loading purchase report: ' + (error.message || error), 7);
     })
-    .getPurchaseReportData(fromDate, toDate);  // Pass as separate arguments
+    .getPurchaseReportData(fromDate, toDate);
 }
+
 function loadUsageReport() {
   const fromDateInput = document.getElementById('usageFromDate');
   const toDateInput = document.getElementById('usageToDate');
@@ -327,59 +324,89 @@ function loadUsageReport() {
     return;
   }
 
+  console.log('Loading usage report - From:', fromDate, 'To:', toDate);
   showInventoryLoadingSpinner('usageTableBody', 7);
   
-  callGAS('getUsageReportData', { fromDate: fromDate, toDate: toDate })
-    .then(response => {
-      if (response && !response.error) {
-        const filteredData = filterDataByDateRange(response, fromDate, toDate);
-        renderUsageReportTable(filteredData);
+  google.script.run
+    .withSuccessHandler(function(response) {
+      console.log('Usage report response:', response);
+      hideLoadingSpinner('usageTableBody');
+      
+      if (response && response.error) {
+        showInventoryEmptyState('usageTableBody', 'Error: ' + response.error, 7);
+        return;
+      }
+      
+      let reportData = [];
+      if (Array.isArray(response)) {
+        reportData = response;
+      } else if (response && response.data && Array.isArray(response.data)) {
+        reportData = response.data;
+      } else if (response && typeof response === 'object') {
+        reportData = Object.values(response).filter(Array.isArray)[0] || [];
+      }
+      
+      if (reportData.length === 0) {
+        showInventoryEmptyState('usageTableBody', 'No usage records found for selected period', 7);
       } else {
-        showInventoryEmptyState('usageTableBody', 'Error loading usage report', 7);
+        renderUsageReportTable(reportData);
       }
     })
-    .catch(error => {
+    .withFailureHandler(function(error) {
       console.error('Error loading usage report:', error);
-      showInventoryEmptyState('usageTableBody', 'Error loading usage report', 7);
-    });
+      hideLoadingSpinner('usageTableBody');
+      showInventoryEmptyState('usageTableBody', 'Error loading usage report: ' + (error.message || error), 7);
+    })
+    .getUsageReportData(fromDate, toDate);
 }
 
 function loadInventoryList() {
+  console.log('Loading inventory list');
   showInventoryLoadingSpinner('inventoryListTableBody', 7);
   
-  callGAS('getInventoryListData', {})
-    .then(response => {
-      if (response && !response.error) {
-        renderInventoryListTable(response);
+  google.script.run
+    .withSuccessHandler(function(response) {
+      console.log('Inventory list response:', response);
+      hideLoadingSpinner('inventoryListTableBody');
+      
+      if (response && response.error) {
+        showInventoryEmptyState('inventoryListTableBody', 'Error: ' + response.error, 7);
+        return;
+      }
+      
+      let listData = [];
+      if (Array.isArray(response)) {
+        listData = response;
+      } else if (response && response.data && Array.isArray(response.data)) {
+        listData = response.data;
+      } else if (response && typeof response === 'object') {
+        listData = Object.values(response).filter(Array.isArray)[0] || [];
+      }
+      
+      if (listData.length === 0) {
+        showInventoryEmptyState('inventoryListTableBody', 'No inventory items found', 7);
       } else {
-        showInventoryEmptyState('inventoryListTableBody', 'Error loading inventory list', 7);
+        renderInventoryListTable(listData);
       }
     })
-    .catch(error => {
+    .withFailureHandler(function(error) {
       console.error('Error loading inventory list:', error);
-      showInventoryEmptyState('inventoryListTableBody', 'Error loading inventory list', 7);
-    });
+      hideLoadingSpinner('inventoryListTableBody');
+      showInventoryEmptyState('inventoryListTableBody', 'Error loading inventory list: ' + (error.message || error), 7);
+    })
+    .getInventoryListData();
+}
+
+// Helper function to hide loading spinner
+function hideLoadingSpinner(elementId) {
+  // The spinner will be replaced by actual content in success/failure handlers
+  // This function is called to ensure consistency
+  console.log('Loading completed for:', elementId);
 }
 
 // ============================================
 // RENDER FUNCTIONS
 // ============================================
-
-function filterDataByDateRange(data, fromDate, toDate, dateField = 'date') {
-  if (!data || !Array.isArray(data)) return [];
-  
-  const from = new Date(fromDate);
-  const to = new Date(toDate);
-  
-  return data.filter(item => {
-    try {
-      const itemDate = new Date(item[dateField]);
-      return itemDate >= from && itemDate <= to;
-    } catch (e) {
-      return false;
-    }
-  });
-}
 
 function renderPurchaseReportTable(data) {
   const tbody = document.getElementById('purchaseTableBody');
@@ -419,6 +446,7 @@ function renderPurchaseReportTable(data) {
 
   tbody.innerHTML = rows + totalRow;
 }
+
 function renderUsageReportTable(data) {
   const tbody = document.getElementById('usageTableBody');
   if (!tbody) return;
@@ -436,14 +464,14 @@ function renderUsageReportTable(data) {
     
     return `
       <tr>
-        <td>${row.inventoryCode || ''}</td>
-        <td>${row.categoryName || ''}</td>
-        <td>${row.description || ''}</td>
+        <td>${escapeHtml(row.inventoryCode || '')}</td>
+        <td>${escapeHtml(row.categoryName || '')}</td>
+        <td>${escapeHtml(row.description || '')}</td>
         <td>${row.quantityUsed || 0}</td>
         <td>${formatCurrency(row.unitCost)}</td>
         <td>${formatCurrency(usageCost)}</td>
         <td>${row.date || ''}</td>
-       </tr>
+      </tr>
     `;
   }).join('');
 
@@ -451,8 +479,7 @@ function renderUsageReportTable(data) {
     <tr class="total-row">
       <td colspan="5" style="text-align: right; font-weight: 700;">Total Usage Cost:</td>
       <td class="total-cell">${formatCurrency(totalUsageCost)}</td>
-      <td></td>
-    </tr>
+      <td>\n    </tr>
   `;
 
   tbody.innerHTML = rows + totalRow;
@@ -479,9 +506,9 @@ function renderInventoryListTable(data) {
     
     return `
       <tr>
-        <td>${row.inventoryCode || ''}</td>
-        <td>${row.categoryName || ''}</td>
-        <td>${row.description || ''}</td>
+        <td>${escapeHtml(row.inventoryCode || '')}</td>
+        <td>${escapeHtml(row.categoryName || '')}</td>
+        <td>${escapeHtml(row.description || '')}</td>
         <td>${quantity}</td>
         <td>${formatCurrency(unitCost)}</td>
         <td>${formatCurrency(totalCost)}</td>
@@ -490,7 +517,7 @@ function renderInventoryListTable(data) {
             <i class="fas fa-ellipsis-v"></i> Action
           </button>
         </td>
-       </tr>
+      </tr>
     `;
   }).join('');
 
@@ -498,8 +525,7 @@ function renderInventoryListTable(data) {
     <tr class="total-row">
       <td colspan="5" style="text-align: right; font-weight: 700;">Total Inventory Cost:</td>
       <td class="total-cell">${formatCurrency(totalInventoryCost)}</td>
-      <td></td>
-    </tr>
+      <td>\n    </tr>
   `;
 
   tbody.innerHTML = rows + totalRow;
@@ -779,13 +805,25 @@ function printReport(tableId) {
   if (activeTab) {
     const tabId = activeTab.id;
     if (tabId === 'purchaseReport') {
-      printUtils.printInventoryReport('purchaseReport');
+      if (window.printUtils && printUtils.printInventoryReport) {
+        printUtils.printInventoryReport('purchaseReport');
+      } else {
+        alert('Print function not available. Please refresh and try again.');
+      }
       return;
     } else if (tabId === 'usageReport') {
-      printUtils.printInventoryReport('usageReport');
+      if (window.printUtils && printUtils.printInventoryReport) {
+        printUtils.printInventoryReport('usageReport');
+      } else {
+        alert('Print function not available. Please refresh and try again.');
+      }
       return;
     } else if (tabId === 'inventoryList') {
-      printUtils.printInventoryReport('inventoryList');
+      if (window.printUtils && printUtils.printInventoryReport) {
+        printUtils.printInventoryReport('inventoryList');
+      } else {
+        alert('Print function not available. Please refresh and try again.');
+      }
       return;
     }
   }
