@@ -170,14 +170,17 @@ async function loadModuleFile(moduleName) {
 // INITIALIZATION
 // ============================================
 
-window.onload = function() {
+document.addEventListener('DOMContentLoaded', function() {
   initializeApp();
-};
+});
 
 function initializeApp() {
   loadUserInfo();
   setupEventListeners();
-  loadContent('dashboard');
+  setupSidebarToggleOnResize();
+  
+  // Load dashboard content directly
+  loadDashboardContent();
   
   // Check if sidebar should be collapsed based on screen size
   if (window.innerWidth <= 768) {
@@ -194,6 +197,16 @@ function setupEventListeners() {
     
     if (userMenu && !userMenu.contains(event.target)) {
       if (userDropdown) userDropdown.classList.remove('show');
+    }
+  });
+}
+
+function setupSidebarToggleOnResize() {
+  window.addEventListener('resize', function() {
+    if (window.innerWidth > 768 && sidebarCollapsed) {
+      // Do nothing, keep collapsed state
+    } else if (window.innerWidth <= 768) {
+      document.getElementById('sidebar').classList.remove('show-mobile');
     }
   });
 }
@@ -232,7 +245,9 @@ function toggleSidebar() {
     sidebar.classList.toggle('show-mobile');
   } else {
     sidebar.classList.toggle('collapsed');
-    mainContent.classList.toggle('expanded');
+    if (mainContent) {
+      mainContent.classList.toggle('expanded');
+    }
     sidebarCollapsed = sidebar.classList.contains('collapsed');
     
     // Close all submenus when sidebar is collapsed
@@ -266,9 +281,11 @@ function toggleSubmenu(submenuId) {
     if (prevIcon) prevIcon.classList.remove('rotated');
   }
   
-  submenu.classList.toggle('show');
-  if (icon) icon.classList.toggle('rotated');
-  currentOpenSubmenu = submenu.classList.contains('show') ? submenu : null;
+  if (submenu) {
+    submenu.classList.toggle('show');
+    if (icon) icon.classList.toggle('rotated');
+    currentOpenSubmenu = submenu.classList.contains('show') ? submenu : null;
+  }
 }
 
 // ============================================
@@ -299,162 +316,23 @@ function hideLoadingModal() {
 }
 
 // ============================================
-// MODULE LOADING
+// DASHBOARD FUNCTIONS
 // ============================================
 
-function loadContent(module) {
-  // Don't reload if already on this module
-  if (currentModule === module) return;
-  
-  showLoadingModal('Loading...');
-  currentModule = module;
-  
-  // Update active menu item
-  updateActiveMenuItem(module);
-
-  // If loading dashboard, use direct content generation
-  if (module === 'dashboard') {
-    const content = generateDashboardContent();
-    document.getElementById('mainContent').innerHTML = '<div class="content-wrapper">' + content + '</div>';
-    hideLoadingModal();
-    closeSidebarMobile();
-    // Initialize dashboard and load alerts
-    setTimeout(() => {
-      initDashboard();
-    }, 100);
-    return;
+// Load dashboard content directly
+function loadDashboardContent() {
+  const mainContent = document.getElementById('mainContent');
+  if (mainContent) {
+    mainContent.innerHTML = '<div class="content-wrapper">' + generateDashboardHTML() + '</div>';
   }
-
-  // Modules that load via server
-  const serverModules = {
-    'paymentVoucher': { 
-      fn: 'getPVFormHTML', 
-      initFn: 'initPVModule'
-    },
-    'inventoryAdd': { 
-      fn: 'getAddInventoryHTML', 
-      initFn: 'initInventoryModule'
-    },
-    'inventoryReport': { 
-      fn: 'getInventoryReportHTML', 
-      initFn: 'initInventoryReportModule'
-    },
-    'addAsset': { 
-      fn: 'getAddAssetHTML', 
-      initFn: 'initAssetModule'
-    },
-    'viewAssetRegister': { 
-      fn: 'getAssetRegisterHTML', 
-      initFn: 'initAssetRegisterModule'
-    },
-    'investmentAdd': { 
-      fn: 'getInvestmentAddHTML', 
-      initFn: 'initInvestmentModule'
-    },
-    'investmentReport': { 
-      fn: 'getInvestmentReportHTML', 
-      initFn: 'initInvestmentReportModule'
-    }
-  };
-
-  // Check if module loads via server
-  if (serverModules[module]) {
-    const config = serverModules[module];
-    
-    // Add timeout to prevent infinite loading
-    const timeoutId = setTimeout(() => {
-      console.error('Module loading timeout for:', module);
-      showErrorContent('Module took too long to load. Please try again.');
-      hideLoadingModal();
-    }, 10000);
-
-    google.script.run
-      .withSuccessHandler(function(htmlContent) {
-        clearTimeout(timeoutId);
-        
-        if (!htmlContent) {
-          console.error('No HTML content returned for module:', module);
-          showErrorContent('Module returned empty content.');
-          hideLoadingModal();
-          closeSidebarMobile();
-          return;
-        }
-
-        document.getElementById('mainContent').innerHTML = '<div class="content-wrapper">' + htmlContent + '</div>';
-        
-        setTimeout(() => {
-          try {
-            if (window[config.initFn] && typeof window[config.initFn] === 'function') {
-              window[config.initFn]();
-            }
-          } catch (error) {
-            console.error('Error initializing module:', error);
-          }
-          hideLoadingModal();
-        }, 200);
-        
-        closeSidebarMobile();
-      })
-      .withFailureHandler(function(error) {
-        clearTimeout(timeoutId);
-        console.error('Error loading module:', error);
-        showErrorContent('Could not load module. Please try again.');
-        hideLoadingModal();
-        closeSidebarMobile();
-      })[config.fn]();
-    
-    return;
-  }
-
-  // Direct content generation for other modules
-  const contentMap = {
-    'disposeAsset': generateDisposeAssetContent
-  };
-
-  const content = contentMap[module] 
-    ? contentMap[module]() 
-    : '<div class="welcome-card"><i class="fas fa-tools welcome-icon"></i><h2>Module Under Construction</h2><p>This feature is coming soon!</p></div>';
-
-  document.getElementById('mainContent').innerHTML = '<div class="content-wrapper">' + content + '</div>';
-  hideLoadingModal();
-  closeSidebarMobile();
+  // Initialize dashboard and load alerts
+  setTimeout(() => {
+    initDashboard();
+  }, 100);
 }
 
-function updateActiveMenuItem(moduleName) {
-  // Remove active class from all menu items
-  document.querySelectorAll('.menu-item').forEach(item => {
-    item.classList.remove('active');
-  });
-  
-  // Map module names to menu item onclick functions
-  const moduleMap = {
-    'dashboard': 'dashboard',
-    'paymentVoucher': 'paymentVoucher',
-    'inventoryAdd': 'inventoryAdd',
-    'inventoryReport': 'inventoryReport',
-    'addAsset': 'addAsset',
-    'viewAssetRegister': 'viewAssetRegister',
-    'investmentAdd': 'investmentAdd',
-    'investmentReport': 'investmentReport'
-  };
-  
-  // Find and activate the corresponding menu item
-  const targetModule = moduleMap[moduleName];
-  if (targetModule) {
-    document.querySelectorAll('.menu-item').forEach(item => {
-      const onclickAttr = item.getAttribute('onclick');
-      if (onclickAttr && onclickAttr.includes(`'${targetModule}'`)) {
-        item.classList.add('active');
-      }
-    });
-  }
-}
-
-// ============================================
-// CONTENT GENERATORS
-// ============================================
-
-function generateDashboardContent() {
+// Generate dashboard HTML
+function generateDashboardHTML() {
   return `
     <div class="dashboard-container">
       <div class="alerts-section">
@@ -521,34 +399,11 @@ function generateDashboardContent() {
   `;
 }
 
-function generateDisposeAssetContent() {
-  return '<div class="welcome-card"><i class="fas fa-trash-alt welcome-icon"></i><h2>Dispose Asset</h2><p>Module under construction</p></div>';
-}
-
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
-
-function showErrorContent(message) {
-  document.getElementById('mainContent').innerHTML = '<div class="content-wrapper"><div class="welcome-card"><i class="fas fa-exclamation-circle welcome-icon"></i><h2>Error Loading Form</h2><p>' + message + '</p></div></div>';
-}
-
-function closeSidebarMobile() {
-  if (window.innerWidth <= 768) {
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar) {
-      sidebar.classList.remove('show-mobile');
-    }
-  }
-}
-
-// ============================================
-// DASHBOARD ALERT FUNCTIONS
-// ============================================
-
-// Load dashboard data on page load
+// Load dashboard data (alerts)
 async function loadDashboardData() {
   try {
+    console.log('Loading dashboard alerts...');
+    
     // Get today's date
     const today = new Date();
     const todayStr = formatDateForInput(today);
@@ -566,6 +421,9 @@ async function loadDashboardData() {
       API.getInvestmentsByDateRange(startOfYear, fiveDaysStr).catch(() => []),
       API.getInventoryListData().catch(() => [])
     ]);
+    
+    console.log('Investments loaded:', investments ? investments.length : 0);
+    console.log('Inventory loaded:', inventoryList ? inventoryList.length : 0);
     
     // Process investment alerts
     processInvestmentAlerts(investments, todayStr, fiveDaysStr);
@@ -726,6 +584,7 @@ function processInventoryAlerts(inventoryList) {
 // Initialize Dashboard
 function initDashboard() {
   console.log('Dashboard initialized - loading alerts');
+  currentModule = 'dashboard';
   // Load dashboard data
   loadDashboardData();
   
@@ -735,6 +594,7 @@ function initDashboard() {
   }
   dashboardRefreshInterval = setInterval(() => {
     if (currentModule === 'dashboard') {
+      console.log('Auto-refreshing dashboard alerts...');
       loadDashboardData();
     }
   }, 300000);
@@ -745,6 +605,93 @@ function cleanupDashboard() {
   if (dashboardRefreshInterval) {
     clearInterval(dashboardRefreshInterval);
     dashboardRefreshInterval = null;
+  }
+}
+
+// ============================================
+// MODULE LOADING (for other modules)
+// ============================================
+
+// Alias for sidebar to load modules
+function loadModule(moduleName) {
+  if (currentModule === moduleName) return;
+  
+  showLoadingModal('Loading module...');
+  currentModule = moduleName;
+  
+  // Update active state in sidebar
+  updateActiveMenuItem(moduleName);
+  
+  const modules = {
+    'paymentVoucher': { file: 'modules/payment-voucher.html', init: 'initPVModule' },
+    'inventoryAdd': { file: 'modules/add-inventory.html', init: 'initInventoryModule' },
+    'inventoryReport': { file: 'modules/inventory-report.html', init: 'initInventoryReportModule' },
+    'addAsset': { file: 'modules/add-asset.html', init: 'initAssetModule' },
+    'viewAssetRegister': { file: 'modules/asset-register.html', init: 'initAssetRegisterModule' },
+    'investmentAdd': { file: 'modules/add-investment.html', init: 'initInvestmentModule' },
+    'investmentReport': { file: 'modules/investment-report.html', init: 'initInvestmentReportModule' },
+    'dashboard': null
+  };
+  
+  // Handle dashboard separately
+  if (moduleName === 'dashboard') {
+    loadDashboardContent();
+    hideLoadingModal();
+    closeSidebarMobile();
+    return;
+  }
+  
+  const config = modules[moduleName];
+  if (!config) {
+    showError('Module not found: ' + moduleName);
+    hideLoadingModal();
+    return;
+  }
+  
+  fetch(config.file)
+    .then(response => response.ok ? response.text() : Promise.reject('HTTP ' + response.status))
+    .then(html => {
+      document.getElementById('mainContent').innerHTML = `<div class="content-wrapper">${html}</div>`;
+      setTimeout(() => {
+        if (window[config.init] && typeof window[config.init] === 'function') {
+          window[config.init]();
+        }
+        hideLoadingModal();
+      }, 150);
+      closeSidebarMobile();
+    })
+    .catch(error => {
+      console.error('Error loading module:', error);
+      showError('Could not load module. Please try again.');
+      hideLoadingModal();
+    });
+}
+
+function updateActiveMenuItem(moduleName) {
+  // Remove active class from all menu items
+  document.querySelectorAll('.menu-item').forEach(item => {
+    item.classList.remove('active');
+  });
+  
+  // Find and activate the corresponding menu item
+  document.querySelectorAll('.menu-item').forEach(item => {
+    const onclickAttr = item.getAttribute('onclick');
+    if (onclickAttr && onclickAttr.includes(`'${moduleName}'`)) {
+      item.classList.add('active');
+    }
+  });
+}
+
+function showError(message) {
+  alert(message);
+}
+
+function closeSidebarMobile() {
+  if (window.innerWidth <= 768) {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+      sidebar.classList.remove('show-mobile');
+    }
   }
 }
 
@@ -801,17 +748,61 @@ function logout() {
 }
 
 // ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+function formatCurrency(value) {
+  if (value === null || value === undefined || value === '') return '0.00';
+  const numValue = parseFloat(value);
+  if (isNaN(numValue)) return '0.00';
+  return numValue.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+function formatDate(dateString) {
+  if (!dateString) return '';
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  } catch (e) {
+    return dateString;
+  }
+}
+
+function formatDateForInput(date) {
+  if (!date) return '';
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getToday() {
+  return formatDateForInput(new Date());
+}
+
+function getStartOfYear() {
+  const today = new Date();
+  const startOfYear = new Date(today.getFullYear(), 0, 1);
+  return formatDateForInput(startOfYear);
+}
+
+// ============================================
 // EXPORT FOR MODULES
 // ============================================
 
 // Make functions available globally
-window.loadContent = loadContent;
-window.loadModule = loadContent; // Alias for sidebar
+window.loadModule = loadModule;
 window.toggleSidebar = toggleSidebar;
 window.toggleUserMenu = toggleUserMenu;
 window.toggleSubmenu = toggleSubmenu;
-window.showLoadingModal = showLoadingModal;
-window.hideLoadingModal = hideLoadingModal;
 window.showProfile = showProfile;
 window.showSettings = showSettings;
 window.logout = logout;
@@ -824,6 +815,11 @@ window.initInvestmentModule = initInvestmentModule;
 window.initInvestmentReportModule = initInvestmentReportModule;
 window.initDashboard = initDashboard;
 window.refreshDashboard = loadDashboardData;
+window.formatCurrency = formatCurrency;
+window.formatDate = formatDate;
+window.formatDateForInput = formatDateForInput;
+window.getToday = getToday;
+window.getStartOfYear = getStartOfYear;
 
 // ============================================
 // ADD CSS FOR LOADING MODAL AND DASHBOARD
