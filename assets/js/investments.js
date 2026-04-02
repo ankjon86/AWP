@@ -577,12 +577,10 @@ function renderByInvestmentType(data, toDate) {
                 `;
               }).join('')}
               <tr class="subtotal-row">
-                <td colspan="2" style="text-align: right;">${escapeHtml(type)} Subtotal:</td>
+                <td colspan="2" style="text-align: right; font-weight: 700;">${escapeHtml(type)} Subtotal:</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                <td>\n                <td>\n                <td>\n                <td>
-                <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
-                <td>\n                <td>
-                <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
+                <td>\n                <td>\n                <td>\n                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
+                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
               </tr>
             </tbody>
@@ -600,10 +598,8 @@ function renderByInvestmentType(data, toDate) {
             <tr class="grand-total-row">
               <td colspan="2" style="text-align: right; font-weight: 700;">Grand Total:</td>
               <td class="grand-total-cell">${formatCurrency(grandTotalAmount)}</td>
-              <td>\n              <td>\n              <td>\n              <td>
-              <td class="grand-total-cell">${formatCurrency(grandTotalInterest)}</td>
-              <td>\n              <td>
-              <td class="grand-total-cell">${formatCurrency(grandTotalMaturityAmount)}</td>
+              <td>\n              <td>\n              <td>\n              <td>\n              <td class="grand-total-cell">${formatCurrency(grandTotalInterest)}</td>
+              <td>\n              <td class="grand-total-cell">${formatCurrency(grandTotalMaturityAmount)}</td>
               <td class="grand-total-cell">${formatCurrency(grandTotalCurrentValue)}</td>
             </tr>
           </tbody>
@@ -698,12 +694,10 @@ function renderByBank(data, toDate) {
                 `;
               }).join('')}
               <tr class="subtotal-row">
-                <td colspan="2" style="text-align: right;">${escapeHtml(bank)} Subtotal:</td>
+                <td colspan="2" style="text-align: right; font-weight: 700;">${escapeHtml(bank)} Subtotal:</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                <td>\n                <td>\n                <td>\n                <td>
-                <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
-                <td>\n                <td>
-                <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
+                <td>\n                <td>\n                <td>\n                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
+                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
               </tr>
             </tbody>
@@ -812,12 +806,10 @@ function renderByDuration(data, toDate) {
                   `;
                 }).join('')}
                 <tr class="subtotal-row">
-                  <td colspan="3" style="text-align: right;">${durationRange} Subtotal:</td>
+                  <td colspan="3" style="text-align: right; font-weight: 700;">${durationRange} Subtotal:</td>
                   <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                  <td>\n                  <td>\n                  <td>\n                  <td>
-                  <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
-                  <td>\n                  <td>
-                  <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
+                  <td>\n                  <td>\n                  <td>\n                  <td class="subtotal-cell">${formatCurrency(subtotalInterest)}</td>
+                  <td>\n                  <td class="subtotal-cell">${formatCurrency(subtotalMaturityAmount)}</td>
                   <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
                 </tr>
               </tbody>
@@ -985,10 +977,9 @@ function renderInterestReport(data, fromDate, toDate) {
                 `;
               }).join('')}
               <tr class="subtotal-row">
-                <td colspan="2" style="text-align: right;">${escapeHtml(type)} Subtotal:</td>
+                <td colspan="2" style="text-align: right; font-weight: 700;">${escapeHtml(type)} Subtotal:</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalAmount)}</td>
-                <td>\n                <td>\n                <td>\n                <td>\n                <td>\n                <td>
-                <td class="subtotal-cell">${formatCurrency(subtotalAccruedMonthly)}</td>
+                <td>\n                <td>\n                <td>\n                <td>\n                <td>\n                <td>\n                <td class="subtotal-cell">${formatCurrency(subtotalAccruedMonthly)}</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalAccruedToDate)}</td>
                 <td class="subtotal-cell">${formatCurrency(subtotalCurrentValue)}</td>
               </tr>
