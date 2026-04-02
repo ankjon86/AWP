@@ -398,9 +398,9 @@ function renderPurchaseReportTable(data) {
 
     return `
       <tr>
-        <td>${row.inventoryCode || ''}</td>
-        <td>${row.categoryName || ''}</td>
-        <td>${row.description || ''}</td>
+        <td>${escapeHtml(row.inventoryCode || '')}</td>
+        <td>${escapeHtml(row.categoryName || '')}</td>
+        <td>${escapeHtml(row.description || '')}</td>
         <td>${formatCurrency(cost)}</td>
         <td>${row.quantity || 0}</td>
         <td>${formatCurrency(row.unitCost)}</td>
@@ -419,7 +419,6 @@ function renderPurchaseReportTable(data) {
 
   tbody.innerHTML = rows + totalRow;
 }
-
 function renderUsageReportTable(data) {
   const tbody = document.getElementById('usageTableBody');
   if (!tbody) return;
